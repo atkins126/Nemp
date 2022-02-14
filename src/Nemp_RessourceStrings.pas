@@ -81,15 +81,6 @@ TreeHeader_Playlist = 'Playlist';
 TreeHeader_Webradio = 'Webradio';
 TreeHeader_Marker = 'Marker';
 
-CollectionSorting_Default  = 'Name';
-CollectionSorting_ByAlbum  = 'Album';
-CollectionSorting_ByArtistAlbum  = 'Artist and Album';
-CollectionSorting_ByCount  = 'Count';
-CollectionSorting_ByYear  = 'Release year';
-CollectionSorting_ByFileAge  = 'Fileage';
-CollectionSorting_ByGenre  = 'Genre';
-CollectionSorting_ByDirectory  = 'Directory';
-
 Time_HoursLong = 'hours';
 Time_DaysLong = 'days';
 Time_SecShort = 's';
@@ -231,6 +222,7 @@ CoverFlowText_WholeLibrary      = 'Your media library';
 CoverFlowText_WholeLibrarySearchResults = 'Your media library (curent search results)';
 
 TagCloud_YourLibrary = 'Your media library';
+TagCloud_MoreFiles = '... and %d more';
 
 //CoverFlowLastFM_Confirmation    = 'Nemp can download missing covers using a webservice from LastFM. Is this ok for you?';
 CoverFlowLastFM_HintConnectError = 'Downloading a cover from LastFM failed.' +#13#10 + 'There is a problem with your internet connection.';
@@ -624,6 +616,7 @@ MainForm_MenuCaptionsPlayNext  = 'Enqueue (after the current title)'; //'Enqueue
 MainForm_MenuCaptionsPlayNow   = 'Just play focussed file (no playlist change)';
 MainForm_MenuCaptionsSortLayerBy = 'Sort layer "%s" by';
 MainForm_MenuCaptionsSortDirectoriesBy = 'Sort Directories by';
+MainForm_MenuCaptionsSortTagCloudBy = 'Sort Tags by';
 
 MainForm_MenuCaptionsSortCollectionBy = 'Sort "%s" by';
 
@@ -921,11 +914,19 @@ Shoutcast_UnknownFormat = 'Unknown format';
 Shoutcast_InputStreamCaption = 'Nemp: Play Webstream';
 Shoutcast_InputStreamLabel   = 'URL (e.g. "http://myhits.com/tune_in.pls" or "http://123.12.34.56:5000")';
 
-TabBtnBrowse_Hint1 = 'Browse your media library';
-TabBtnBrowse_Hint2 = 'Click to resort';
+TabBtnBrowse_OriginalHint = 'Browse your media library through a tree view';
+TabBtnCoverFlow_OriginalHint = 'Browse your media library through a coverflow';
+TabBtnTagCloud_OriginalHint = 'Browse your media library through a tag cloud';
+TabBtnBrowse_RepairHint = 'Some files have been edited.';
+TabBtnBrowse_DirtySearch = '- The search function may not find all titles.';
+TabBtnBrowse_DirtyCollections = '- The grouping of titles by artist/album/tags/... may not be up to date.';
+TabBtnBrowse_RepairHint2 = 'Click to resolve these inconsistencies.';
 
-TabBtnTagCloud_Hint1 = 'Tag cloud';
-TabBtnTagCloud_Hint2 = 'Click to rebuild';
+
+// TabBtnBrowse_Hint1 = 'Browse your media library';
+// TabBtnBrowse_Hint2 = 'Click to resort';
+// TabBtnTagCloud_Hint1 = 'Tag cloud';
+// TabBtnTagCloud_Hint2 = 'Click to rebuild';
 
 //TagEditor_RenameTag_Caption = 'Rename Tag';
 //TagEditor_RenameTag_Prompt = 'Enter a new name for the tag. If it already exists, the two tags are merged.';
@@ -1148,6 +1149,24 @@ LibraryOrganizer_NoMoreCategoriesPossible =
   + #13#10+#13#10
   + 'If you want to reuse one of the category slots you have just deleted, you need to apply the current settings first. After Nemp has rebuilt the Media Library, there should be a category slot available again.';
   // Note that the category-system is not intended for tagging your music files.
+
+DragDropCategoryMove = 'Move to category %1';
+DragDropCategoryCopy = 'Copy to category %1';
+DragDropLibrary = 'Add to Media Library';
+DragDropHintTargetPlaylistOrCategory = 'Drop the files into the Playlist or another Category.';
+DragDropHintTargetPlaylist = 'Drop the files into the Playlist.';
+DragDropLibraryInternFailCategory = 'You can''t add files into this category';
+
+DragDropLibraryCategory = 'Add to Media Library, category %1';
+DragDropPlaylistAdd = 'Add to Playlist here';
+DragDropPlaylistMove = 'Move here';
+DragDropPlaylistCopy = 'Copy here';
+DragDropPlayerMain = 'Play Now';
+DragDropPlayerHeadset = 'Play in Headset';
+
+ChangeCategoryForm_CurrentCategory = 'Current category: "%s"';
+ChangeCategoryForm_MoreFiles = '... and %d more';
+ChangeCategoryForm_AffectedFiles = 'Affected files: %d';
 
 implementation
 

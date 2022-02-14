@@ -9,22 +9,22 @@ uses
 
 type
 
+  teSpecialContent = (scRegular, scDirectory, scTagCloud);
+
   TRootCollection = class;
   TAudioFileCollection = class;
 
   TCollectionComparer = function (const item1, item2: TAudioFileCollection): Integer;
-
   TCollectionCompareArray = Array[teCollectionSorting] of TCollectionComparer;
 
   TAudioFileCollectionList = class(TObjectList<TAudioFileCollection>);
   TAudioFileCollectionDict = class (TDictionary<string, TAudioFileCollection>);
 
-  {TCollectionData = record
-    CollectionType: teCollectionType;
-    // Comparer: TCollectionComparer; // IComparer<TAudioFileCollection>;
-    ComparerTag: teCollectionSortings;   // for saving/loading the sorting setting
-    // Direction: TSortDirection; ??
-  end;}
+  ///  FileCollectionMode:
+  ///  cmDefault: Subcollections are determined by the Config of the RootCollection
+  ///  cmDirectory: SubCollections are created as long as tehy are necessary, depending on the  depth of the directory structure
+  ///  cmCloud: Subcollections are created on demand, and each file can be part of many subcollections
+  teFileCollectionMode = (cmDefault, cmDirectory, cmCloud);
 
   {
     TAudioFileCollection
@@ -36,21 +36,28 @@ type
   TAudioFileCollection = class(TAudioCollection)
     protected
       fInsertMode: teInsertMode;
-      fRootCollection: TRootCollection;
-      fParentCollection: TAudioFileCollection;
+      fRoot: TRootCollection;
+      fParent: TAudioFileCollection;
       fLevel: Integer;
       fNeedSorting: Boolean;
       fNeedAnalysis: Boolean;
 
-      fSubCollectionList: TAudioFileCollectionList; // (sorted) list of Sub-Collections
-      fSubCollectionDict: TAudioFileCollectionDict; // Dictionary of Sub-Collections (during build-up stage)
+      fCollectionList: TAudioFileCollectionList; // (sorted) list of Sub-Collections
+      fCollectionDict: TAudioFileCollectionDict; // Dictionary of Sub-Collections (during build-up stage)
       fFileList: TAudioFileList;
+      fLastAddedAudioFile: TAudioFile;
 
+      // fContent: ContentType of the Collection itself. (needed e.g. to generate a proper Caption)
+      // fChildContent: ContentType of the Collections stored in this collection. (needed while adding new files)
+      // fChildSorting: Sorting of these Collections
+      // Example:
+      //    A Collection of ContentType "ccArtist" stores all files for one specific Artist
+      //    This Collection can contain several Collections of ContentType "ccAlbum", each of these stores all files for a specific Album of the Artist
+      //    The list of these Collections is sorted by fChildSorting "csFileAge", displaying the newest Album first
+      fContent: teCollectionContent;
+      fChildContent: teCollectionContent;
+      fChildSorting: teCollectionSorting; //
       fMissingCoverMode: teMissingCoverPreSorting;
-      fSubCollectionSorting: teCollectionSorting;
-
-      fCollectionType: teCollectionType;
-      fSubCollectionType: teCollectionType;
 
       fOnBeforeDeleteCollection: TAudioCollectionNotifyEvent;
       fOnAfterDeleteCollection: TAudioCollectionNotifyEvent;
@@ -65,6 +72,8 @@ type
       fCoverID: String;
       fYear: Integer;
       fFileAge: TDateTime;
+      // to distinguish automatically created Tags and LastFM-Tags in the TagCloud
+      fIsAutoTag: Boolean;
 
       function GenerateDirectoryAlbumKey(aAudioFile: TAudioFile): String;
       function GenerateArtistKey(aAudioFile: TAudioFile): String;
@@ -77,31 +86,32 @@ type
       function GenerateFileAgeMonthKey(aAudioFile: TAudioFile): String;
 
       function TryGetCollection(aKey: String; out Value: TAudioFileCollection): Boolean;
-      function InitNewCollection(aKey: String): TAudioFileCollection;
-      function InitNewPathCollection(aKey: String): TAudioFileCollection;
+      function InitNewCollection(aKey: String; CollectionMode: teFileCollectionMode = cmDefault): TAudioFileCollection;
       procedure SwitchToDictionary;
 
-      procedure AddAudioFileByArtist(aAudioFile: TAudioFile);
-      procedure AddAudioFileByAlbum(aAudioFile: TAudioFile);
-      procedure AddAudioFileByGenre(aAudioFile: TAudioFile);
-      procedure AddAudioFileByYear(aAudioFile: TAudioFile);
-      procedure AddAudioFileByDecade(aAudioFile: TAudioFile);
-      procedure AddAudioFileByFileAgeYear(aAudioFile: TAudioFile);
-      procedure AddAudioFileByFileAgeMonth(aAudioFile: TAudioFile);
-      procedure AddAudioFileByDirectory(aAudioFile: TAudioFile);
-      procedure AddAudioFileByPath(aAudioFile: TAudioFile);
-      procedure AddAudioFileByCoverID(aAudioFile: TAudioFile);
+      procedure AddByArtist(aAudioFile: TAudioFile);
+      procedure AddByAlbum(aAudioFile: TAudioFile);
+      procedure AddByGenre(aAudioFile: TAudioFile);
+      procedure AddByYear(aAudioFile: TAudioFile);
+      procedure AddByDecade(aAudioFile: TAudioFile);
+      procedure AddByFileAgeYear(aAudioFile: TAudioFile);
+      procedure AddByFileAgeMonth(aAudioFile: TAudioFile);
+      procedure AddByDirectory(aAudioFile: TAudioFile);
+      procedure AddForTagCloud(aAudioFile: TAudioFile);
+      procedure AddByPath(aAudioFile: TAudioFile);
+      procedure AddByCoverID(aAudioFile: TAudioFile);
 
       function SearchAudioFileByKey (aKey: String; aAudioFile: TAudioFile; CheckExist: Boolean): TAudioFileCollection;
       function SearchAudioFileByPath (aAudioFile: TAudioFile; CheckExist: Boolean): TAudioFileCollection;
 
-      function GetSubCollectionByKey(aKey: String): TAudioFileCollection;
-      function GetSubCollection(Index: Integer): TAudioCollection; override;
+      function GetCollectionByKey(aKey: String): TAudioFileCollection;
+      function GetCollection(Index: Integer): TAudioCollection; override;
       function GetCollectionCount: Integer; override;
 
       function BuildCaption(IncludeCount: Boolean): String;
       function GetCaption: String; override;
       function GetSimpleCaption: String; override;
+      function GetCategoryCaption: String;
       function GetCoverID: String; override;
 
       function HasUniqueValue(aCollection: TAudioFileCollection): teCollectionUniqueness;
@@ -114,11 +124,9 @@ type
       procedure GetCommonDirectory;
 
       procedure DecreaseCount(recursive: Boolean);
-      procedure GetReverseFilesByProperty(dest: TAudioFileList; aCollectionType: teCollectionType; aProperty: String);
+      procedure GetReverseFilesByProperty(dest: TAudioFileList; aCollectionType: teCollectionContent; aProperty: String);
 
     public
-      //property CollectionCount: Integer read GetCollectionCount;
-      //property SubCollections[Index: Integer]: TAudioFileCollection read GetSubCollection;
 
       property Artist  : String      read fArtist;
       property Album   : String      read fAlbum;
@@ -128,61 +136,63 @@ type
       property Year    : Integer     read fYear;
       property FileAge : TDateTime   read fFileAge;
       property MissingCoverMode: teMissingCoverPreSorting read fMissingCoverMode write fMissingCoverMode;
+      property IsAutoTag: Boolean read fIsAutoTag write fIsAutoTag;
+
+      // CategoryCaption: Used for the TagCloud. The RootCollection should show the Category there
+      property CategoryCaption: String read GetCategoryCaption;
 
       // events
       // OnBeforeDeleteCollection: triggered before a subcollection is deleted from the SubCollections-List/Dict (todo then: Delete the VST-Node)
       property OnBeforeDeleteCollection: TAudioCollectionNotifyEvent read fOnBeforeDeleteCollection write fOnBeforeDeleteCollection;
       property OnAfterDeleteCollection: TAudioCollectionNotifyEvent read fOnAfterDeleteCollection write fOnAfterDeleteCollection;
 
-      property NeedSorting: Boolean read fNeedSorting; // This indicates whether the fSubCollectionList should be sorted again
+      property NeedSorting: Boolean read fNeedSorting; // This indicates whether the fCollectionList should be sorted again
       property NeedAnalysis: Boolean read fNeedAnalysis;
 
-      property CollectionType: teCollectionType read fCollectionType;
-      property SubCollectionType: teCollectionType read fSubCollectionType;
-      property SubCollectionSorting: teCollectionSorting read fSubCollectionSorting;
+      property Content: teCollectionContent read fContent;
+      property ChildContent: teCollectionContent read fChildContent;
+      property ChildSorting: teCollectionSorting read fChildSorting;
 
-      property RootCollection: TRootCollection read fRootCollection;
-      property ParentCollection: TAudioFileCollection read fParentCollection;
+      property Root: TRootCollection read fRoot;
+      property Parent: TAudioFileCollection read fParent;
 
-      constructor Create(aOwner: TLibraryCategory; aRoot: TRootCollection; aLevel: Integer; RecursiveDir: Boolean = False);
+      //constructor Create(aOwner: TLibraryCategory; aRoot: TRootCollection; aLevel: Integer; RecursiveDir: Boolean = False);
+      constructor Create(aOwner: TLibraryCategory; aRoot: TRootCollection; aLevel: Integer; CollectionMode: teFileCollectionMode = cmDefault);
       destructor Destroy; override;
       procedure Clear; override;
-      procedure Empty; override;
       procedure RemoveEmptyCollections; override;
 
       procedure AddAudioFile(aAudioFile: TAudioFile);
-      procedure SortCollection(doRecursive: Boolean = True); override;
-      procedure ReSortCollection(newSorting: teCollectionSorting); override;
+      procedure Sort(doRecursive: Boolean = True); override;
+      procedure ReSort(newSorting: teCollectionSorting); override;
       procedure SortCollectionLevel(aLevel: Integer; ForceSorting: Boolean = False); override;
       procedure ReSortDirectoryCollection(newSorting: teCollectionSorting; recursive: Boolean);
+      procedure ReSortTagCloudCollection(newSorting: teCollectionSorting; recursive: Boolean);
+
 
       procedure DoGetFiles(dest: TAudioFileList; recursive: Boolean); override;
       procedure DoChangeCoverIDAfterDownload(newID: String); override;
       procedure GetReverseFiles(dest: TAudioFileList);
+      // Some special methods for TagCloud
+      // Expand: Adds a new Layer of Tags by changing the subCollectionType to "Cloud" and adding all files into it
+      // ClearSubCollections: Clears the SubCollections, but remains the FileList
+      function ExpandTagCloud(DoSort: Boolean = False): Boolean;
+      procedure ClearSubCollections;
 
       function SearchAudioFile(aAudioFile: TAudioFile; CheckExist: Boolean): TAudioFileCollection;
       function SearchEditedAudioFile(aAudioFile: TAudioFile): TAudioFileCollection;
 
       procedure RemoveAudioFile(aAudioFile: TAudioFile); virtual;
+      procedure RemoveAudioFileFromTagCloud(aAudioFile: TAudioFile); virtual;
+
       function RelocateAudioFile(aAudioFile: TAudioFile): Boolean; virtual;
       function CollectionKeyHasChanged(aAudioFile: TAudioFile): Boolean; virtual;
 
       procedure RemoveCollection(aCollection: TAudioFileCollection);
 
-
       function MatchPrefix(aPrefix: String): Boolean; override;
       function ComparePrefix(aPrefix: String): Integer; override;
-      function GetCollectionIndex(aCollection: TAudioCollection): Integer; override;
-
-      {
-      Frage: Wie einzelne Audiofiles (z.B. nach einer Änderung einiger Eigenschaften) aus der Collection
-      (oder besser: DEN COLLECTIONS!) entfernen?
-      Problem: Die Key-Properties sind ggf. nach den Änderungen anders, d.h. man kann von der RootCollection aus
-      die richtige FileList nicht mehr finden (Backup-Properties "Key1, Key2" möchte ich loswerden)
-      Lösung: Vor dem Edit die Collections suchen und zwischenspeichern.
-      Aus diesen dann nach dem edit das File löschen. Falls Count der Collection dann = 0: Collection aus dem Parent löschen (?)
-      }
-
+      function IndexOf(aCollection: TAudioCollection): Integer; override;
 
       procedure Analyse(recursive: Boolean); override;
       // After inserting all Files into a collection, we may want to analyze these files and collect further data
@@ -190,56 +200,56 @@ type
 
   end;
 
-  // Den Typ nochmal überdenken ?
-  // Sinn: Es soll mehrere Sortierungen für die AudioFiles geben, d.h. Root kann sein "Verzeichnisse" oder "Artist-Album"
-  // Bei Webradio und Playlists: Da auch eine Baumstruktur ermöglichen?
+
   TRootCollection = class(TAudioFileCollection)
     private
-      // Liste/Array mit Typen der sub-collections. Die werden nur im Root einmal gespeichert, alle
-      // sub collections verweisen darauf und können anhand ihres Levels (Tiefe im Baum) ihren Typ bestimmen
-      fCollectionTypeList: TCollectionTypeList;
-      fCaptionTypeList: TCollectionTypeList;
-      // Properties fest definiert durch MediaLibrary-Settings
-      // caption dann z.B. "Verzeichnisse" oder "Artist-Album"
+      // List with the types of sub-collections. These are stored once in the RootCollection.
+      // All SubCollections link to this list and can determine their type through their layer-level in the Tree.
+      // Properties/Types are defined by the MediaLibrary-Settings
+      fCollectionConfigList: TCollectionConfigList;
+      fCaptionConfigList: TCollectionConfigList;
 
     protected
       function GetCaption: String; override;
       function GetLevelCaption(Index: Integer): String;
       function GetLayerDepth: Integer;
       function GetIsDirectoryCollection: Boolean;
+      function GetSpecialContent: teSpecialContent;
 
-      procedure AddCaptionType(aType: TCollectionConfig);
+      procedure AddCaptionConfig(aType: TCollectionConfig);
       procedure ReBuildCaptionTypes;
-
+      property IsDirectoryCollection: Boolean read GetIsDirectoryCollection;
     public
       property LevelCaption[Index: Integer]: string read GetLevelCaption;
       property LayerDepth: Integer read GetLayerDepth;
-      property IsDirectoryCollection: Boolean read GetIsDirectoryCollection;
-
-      property CollectionTypeList: TCollectionTypeList read fCollectionTypeList;
+      property SpecialContent: teSpecialContent read GetSpecialContent;
+      property CollectionConfigList: TCollectionConfigList read fCollectionConfigList;
 
       constructor Create(aOwner: TLibraryCategory);
       destructor Destroy; override;
       procedure Clear; override;
       procedure Reset;
+      // Special method for TagClouds:
+      // ResetTagCloud: Clear all Sub-SubCollections to save Memory
+      procedure ResetTagCloud;
 
-      procedure AddSubCollectionType(aType: teCollectionType; aSortingType: teCollectionSorting);
-      procedure InsertSubCollectionType(Index: Integer; aType: teCollectionType; aSortingType: teCollectionSorting);
+      function ContainsContent(Value: teCollectionContent): Boolean;
+
+      procedure AddSubCollectionType(aType: teCollectionContent; aSortingType: teCollectionSorting);
+      procedure InsertSubCollectionType(Index: Integer; aType: teCollectionContent; aSortingType: teCollectionSorting);
       procedure MoveSubCollectionType(curIndex, newIndex: Integer);
-      procedure ChangeSubCollectionType(Index: Integer; aType: teCollectionType; aSortingType: teCollectionSorting);
+      procedure ChangeSubCollectionType(Index: Integer; aType: teCollectionContent; aSortingType: teCollectionSorting);
       procedure ChangeSubCollectionSorting(Index: Integer; aSortingType: teCollectionSorting);
       procedure RemoveSubCollection(Layer: Integer);
 
-      function GetSubCollectionType(aLevel: Integer): teCollectionType;
-      // function GetCollectionComparer(aLevel: Integer): TCollectionComparer; //IComparer<TAudioFileCollection>;
+      function GetSubCollectionType(aLevel: Integer): teCollectionContent;
       function GetCollectionCompareType(aLevel: Integer): teCollectionSorting;
       procedure ResortLevel(aLevel: Integer; newSorting: teCollectionSorting);
 
       procedure RemoveAudioFile(aAudioFile: TAudioFile); override;
+      function RelocateAudioFile(aAudioFile: TAudioFile): Boolean; override;
       procedure RepairDriveChars(DriveManager: TDriveManager);
   end;
-
-  // TRootCollectionList = class(TObjectList<TRootCollection>);
 
   TLibraryFileCategory = class(TLibraryCategory)
     protected
@@ -251,11 +261,11 @@ type
       // creates a new RootCollection, adds it to the internal list and returns.
       //function AddRootCollection: TRootCollection;
       procedure RememberLastCollection(aCollection: TAudioCollection); override;
-      function FindLastCollectionAgain: TAudioCollection; override;
+      function FindLastCollectionAgain: TAudioCollection;  override;
+      function FindLastCollectionAgainTagCloud(var LastKeyFound, ExpandLastKey: Boolean): TAudioCollection;
 
-      //procedure Reset;
-      function AddRootCollection(const Properties: Array of teCollectionType; const Sortings: Array of teCollectionSorting): TRootCollection; overload;
-      function AddRootCollection(aRootConfig: TCollectionTypeList): TRootCollection; overload;
+      function AddRootCollection(const Properties: Array of teCollectionContent; const Sortings: Array of teCollectionSorting): TRootCollection; overload;
+      function AddRootCollection(aRootConfig: TCollectionConfigList): TRootCollection; overload;
 
       procedure AddAudioFile(aAudioFile: TAudioFile);
       procedure RemoveAudioFile(aAudioFile: TAudioFile);
@@ -271,40 +281,22 @@ type
       procedure RepairDriveChars(DriveManager: TDriveManager); override;
   end;
 
-  //TLibraryFileCategoryList = class(TObjectList<TLibraryFileCategory>);
+  function SortCollection_MissingCoverFirst(const item1, item2: TAudioFileCollection): Integer;
+  function SortCollection_MissingCoverLast(const item1, item2: TAudioFileCollection): Integer;
 
-
-  {var
-    SortCollection_Default,
-    SortCollection_Album, // needed, as Album-Key can be quite complicated
-    SortCollection_ArtistAlbum,
-    SortCollection_Count,
-    SortCollection_Year,
-    SortCollection_FileAge,
-    SortCollection_Genre,
-    SortCollection_Directory: IComparer<TAudioFileCollection>;
-    // not needed (probably)
-    //SortCollection_Directory,
-    //SortCollection_Genre
-    //SortCollection_Artist
-  }
-
-    function SortCollection_MissingCoverFirst(const item1, item2: TAudioFileCollection): Integer;
-    function SortCollection_MissingCoverLast(const item1, item2: TAudioFileCollection): Integer;
-
-    function CompareCollection_Default(const item1,item2: TAudioFileCollection): Integer;
-    function CompareCollection_Album(const item1,item2: TAudioFileCollection): Integer;
-    function CompareCollection_ArtistAlbum(const item1,item2: TAudioFileCollection): Integer;
-    function CompareCollection_Count(const item1,item2: TAudioFileCollection): Integer;
-    function CompareCollection_Year(const item1,item2: TAudioFileCollection): Integer;
-    function CompareCollection_FileAge(const item1,item2: TAudioFileCollection): Integer;
-    function CompareCollection_Genre(const item1,item2: TAudioFileCollection): Integer;
-    function CompareCollection_Directory(const item1,item2: TAudioFileCollection): Integer;
+  function CompareCollection_Default(const item1,item2: TAudioFileCollection): Integer;
+  function CompareCollection_Album(const item1,item2: TAudioFileCollection): Integer;
+  function CompareCollection_ArtistAlbum(const item1,item2: TAudioFileCollection): Integer;
+  function CompareCollection_Count(const item1,item2: TAudioFileCollection): Integer;
+  function CompareCollection_Year(const item1,item2: TAudioFileCollection): Integer;
+  function CompareCollection_FileAge(const item1,item2: TAudioFileCollection): Integer;
+  function CompareCollection_Genre(const item1,item2: TAudioFileCollection): Integer;
+  function CompareCollection_Directory(const item1,item2: TAudioFileCollection): Integer;
 
 implementation
 
 uses
-  Hilfsfunktionen, StringHelper, AudioFileHelper;
+  Hilfsfunktionen, StringHelper, AudioFileHelper, gnugettext, MainFormHelper;
 
 type
   TKeyCache = record
@@ -432,70 +424,59 @@ begin
           result := 0;
 end;
 
-(*
-function GetComparer(Sorting: teCollectionSortings): TCollectionComparer; // IComparer<TAudioFileCollection>;
-begin
-  case Sorting of
-    csDefault    : result := CompareCollection_Default;
-    csAlbum      : result := CompareCollection_Album;
-    csArtistAlbum: result := CompareCollection_ArtistAlbum;
-    csCount      : result := CompareCollection_Count;
-    csYear       : result := CompareCollection_Year;
-    csFileAge    : result := CompareCollection_FileAge;
-    csGenre      : result := CompareCollection_Genre;
-    csDirectory  : result := CompareCollection_Directory;
-  else
-    // by Key
-    result := CompareCollection_Default;
-  end;
-end;   *)
-
 
 { TAudioFileCollection }
 
-constructor TAudioFileCollection.Create(aOwner: TLibraryCategory; aRoot: TRootCollection; aLevel: Integer; RecursiveDir: Boolean = False);
+constructor TAudioFileCollection.Create(aOwner: TLibraryCategory; aRoot: TRootCollection; aLevel: Integer;
+  CollectionMode: teFileCollectionMode = cmDefault);
 begin
   inherited create(aOwner);
 
   fCollectionClass := ccFiles;
-  fRootCollection := aRoot;
+  fRoot := aRoot;
   fLevel := aLevel;
   fNeedSorting := False;
   fNeedAnalysis := False;
   fInsertMode := imList;
   fMissingCoverMode := mcIgnore;
-  fSubCollectionList := TAudioFileCollectionList.Create(True);
+  fCollectionList := TAudioFileCollectionList.Create(True);
+  fIsAutoTag := True;
 
   if assigned(aRoot) then begin
-    if RecursiveDir then begin
-      fCollectionType    := ctDirectory;
-      fSubCollectionType := ctDirectory;
-      //fSubCollectionComparer := CompareCollection_Default;   // here: Comparer-Settings for Directories from OrganizerSettings?
-      fSubCollectionSorting := csDefault;
-    end else
-    begin
-      // note: aLevel >= 1 here, and therefore aLevel-1 >= 0
-      fCollectionType := aRoot.GetSubCollectionType(aLevel-1);
-      fSubCollectionType := aRoot.GetSubCollectionType(aLevel);
-      //fSubCollectionComparer := aRoot.GetCollectionComparer(aLevel);
-      fSubCollectionSorting := aRoot.GetCollectionCompareType(aLevel);
+    case CollectionMode of
+      cmDefault: begin
+        // note: aLevel >= 1 here, and therefore aLevel-1 >= 0
+        fContent := aRoot.GetSubCollectionType(aLevel-1);
+        fChildContent := aRoot.GetSubCollectionType(aLevel);
+        fChildSorting := aRoot.GetCollectionCompareType(aLevel);
+      end;
+      cmDirectory: begin
+        fContent    := ccDirectory;
+        fChildContent := ccDirectory;
+        fChildSorting := csDefault;
+      end;
+      cmCloud: begin
+        fContent    := ccTagCloud;
+        fChildContent := ccNone;
+        fChildSorting := csDefault;
+      end;
     end;
   end else
   begin
-    fCollectionType    := ctNone;
-    fSubCollectionType := ctNone;
-    //fSubCollectionComparer := CompareCollection_Default;
-    fSubCollectionSorting := csDefault;
+    fContent    := ccNone;
+    fChildContent := ccNone;
+    fChildSorting := csDefault;
   end;
   fFileList := TAudioFileList.Create(False);
+  fLastAddedAudioFile := Nil;
 end;
 
 destructor TAudioFileCollection.Destroy;
 begin
   fFileList.Free;
-  if assigned(fSubCollectionDict) then
-    fSubCollectionDict.Free;
-  fSubCollectionList.Free;
+  if assigned(fCollectionDict) then
+    fCollectionDict.Free;
+  fCollectionList.Free;
 
   inherited;
 end;
@@ -514,13 +495,20 @@ procedure TAudioFileCollection.DoGetFiles(dest: TAudioFileList;
   recursive: Boolean);
 var
   i: Integer;
+
+  function isCloud: Boolean;
+  begin
+    result := (Content = ccTagCloud)
+        or ((Content = ccRoot) and (self.fChildContent = ccTagCloud))
+  end;
+
 begin
   for i := 0 to fFileList.Count - 1 do
     dest.Add(fFileList[i]);
 
-  if recursive and assigned(self.fSubCollectionList) then begin
-    for i := 0 to fSubCollectionList.Count - 1 do
-      fSubCollectionList[i].DoGetFiles(dest, recursive);
+  if recursive and (not isCloud) and assigned(fCollectionList) then begin
+    for i := 0 to fCollectionList.Count - 1 do
+      fCollectionList[i].DoGetFiles(dest, recursive);
   end;
 end;
 
@@ -529,15 +517,15 @@ var
   aProp: String;
 begin
   aProp := '';
-  case fCollectionType of
+  case fContent of
     //ctNone: ;
     //ctRoot: ;
-    ctArtist: aProp := fArtist;
-    ctAlbum: aProp := fAlbum;
+    ccArtist: aProp := fArtist;
+    ccAlbum: aProp := fAlbum;
     //ctDirectory: ;
-    ctGenre: aProp := fGenre;
+    ccGenre: aProp := fGenre;
     //ctDecade: ;
-    ctYear: aProp := IntToStr(fYear);
+    ccYear: aProp := IntToStr(fYear);
     //ctFileAgeYear: ;
     //ctFileAgeMonth: ;
   else
@@ -545,28 +533,27 @@ begin
   end;
 
   if aProp <> '' then
-    fRootCollection.GetReverseFilesByProperty(
-      dest, fCollectionType, aProp)
+    fRoot.GetReverseFilesByProperty(
+      dest, fContent, aProp)
   else
     GetFiles(dest, True);
 end;
 
-procedure TAudioFileCollection.GetReverseFilesByProperty(dest: TAudioFileList; aCollectionType: teCollectionType; aProperty: String);
+procedure TAudioFileCollection.GetReverseFilesByProperty(dest: TAudioFileList; aCollectionType: teCollectionContent; aProperty: String);
 var
   i: Integer;
-  match: Boolean;
 
   function isMatch(aFile: TAudioFile): Boolean;
   begin
     case aCollectionType of
       //ctNone: ;
       //ctRoot: ;
-      ctArtist: result := aFile.Artist = aProperty;
-      ctAlbum: result := aFile.Album = aProperty;
+      ccArtist: result := aFile.Artist = aProperty;
+      ccAlbum: result := aFile.Album = aProperty;
       //ctDirectory: ;
-      ctGenre: result := aFile.Genre = aProperty;
+      ccGenre: result := aFile.Genre = aProperty;
       //ctDecade: ;
-      ctYear: result := aFile.Year = aProperty;
+      ccYear: result := aFile.Year = aProperty;
       //ctFileAgeYear: ;
       //ctFileAgeMonth: ;
     else
@@ -579,38 +566,71 @@ begin
     if isMatch(fFileList[i]) then
       dest.Add(fFileList[i]);
 
-  if assigned(self.fSubCollectionList) then begin
-    for i := 0 to fSubCollectionList.Count - 1 do
-      fSubCollectionList[i].GetReverseFilesByProperty(dest, aCollectionType, aProperty);
+  if assigned(self.fCollectionList) then begin
+    for i := 0 to fCollectionList.Count - 1 do
+      fCollectionList[i].GetReverseFilesByProperty(dest, aCollectionType, aProperty);
   end;
+end;
+
+procedure TAudioFileCollection.ClearSubCollections;
+begin
+  fCollectionList.Clear;
+  if assigned(fCollectionDict) then
+    fCollectionDict.Clear;
+end;
+
+function TAudioFileCollection.ExpandTagCloud(DoSort: Boolean = False): Boolean;
+var
+  i: Integer;
+begin
+  result := Content = ccRoot;
+  if Content <> ccTagCloud then
+    exit;
+  if fFileList.Count <= 1 then
+    exit;
+
+  self.fChildContent := ccTagCloud;
+  // clear existing subcollections, to be sure
+  ClearSubCollections;
+
+  for i := 0 to fFileList.Count - 1 do
+    AddForTagCloud(fFileList[i]);
+
+  if DoSort then
+    ReSort(Root.ChildSorting);
+
+  result := True;
 end;
 
 function TAudioFileCollection.BuildCaption(IncludeCount: Boolean): String;
 var
   mainValue: String;
 begin
-  case self.fCollectionType of
-    ctNone: mainValue := '<Error>'; //
-    ctRoot: mainValue := ''; // should be handled by TRootCollection
-    ctArtist: mainValue := self.fArtist;
-    ctAlbum: begin
-      if assigned(fParentCollection)
-        and (fParentCollection.fSubCollectionSorting = csArtistAlbum)
+  case self.fContent of
+    ccNone: mainValue := '<Error>'; //
+    ccRoot: mainValue := ''; // should be handled by TRootCollection
+    ccArtist: mainValue := self.fArtist;
+    ccAlbum: begin
+      if assigned(fParent)
+        and (fParent.fChildSorting = csArtistAlbum)
       then
         mainValue := Format('%s - %s', [fArtist, fAlbum])
       else begin
         mainValue := Format('%s - %s', [fArtist, fAlbum]); //fKeyData.Album;    // todo: empty string
-        if mainValue = '' then
-          mainValue := rsCollectionDataUnknown;
       end;
     end;
-    ctDirectory: mainValue := fKey; //  .Directory;
-    ctGenre: mainValue := fGenre;
-    ctDecade: mainValue := IntToStr(fYear);
-    ctYear: mainValue := IntToStr(fYear);
-    ctFileAgeYear: mainValue := FormatDateTime('yyyy', fFileAge, fLibraryFormatSettings);
-    ctFileAgeMonth: mainValue := FormatDateTime('mmmm yy', fFileAge, fLibraryFormatSettings);
+    ccDirectory: mainValue := fKey; //  .Directory;
+    ccGenre: mainValue := fGenre;
+    ccDecade: mainValue := IntToStr(fYear);
+    ccYear: mainValue := IntToStr(fYear);
+    ccFileAgeYear: mainValue := FormatDateTime('yyyy', fFileAge, fLibraryFormatSettings);
+    ccFileAgeMonth: mainValue := FormatDateTime('mmmm yy', fFileAge, fLibraryFormatSettings);
+  else
+    mainValue := fKey;
   end;
+
+  if mainValue = '' then
+    mainValue := rsCollectionDataUnknown;
 
   if IncludeCount then
     result := Format('%s (%d)', [mainValue, Count] )
@@ -626,6 +646,14 @@ end;
 function TAudioFileCollection.GetSimpleCaption: String;
 begin
   result := BuildCaption(False);
+end;
+
+function TAudioFileCollection.GetCategoryCaption: String;
+begin
+  if assigned(fOwnerCategory) then
+    result := fOwnerCategory.Name
+  else
+    result := '';
 end;
 
 
@@ -690,7 +718,7 @@ begin
     mismatchPos := 0;
     str1 := GetCommonString(aStringlist, 1, mismatchPos);
     if str1 = '' then
-      fAlbum := CoverFlowText_UnkownCompilation // 'Unknown compilation';
+      fAlbum := '' //CoverFlowText_UnkownCompilation // 'Unknown compilation';
     else
     begin
       if mismatchPos <= length(str1) Div 2 +1 then
@@ -714,13 +742,13 @@ begin
   else
       begin
         result := cuSampler;
-        aCollection.SortCollection(False); // by Count
+        aCollection.Sort(False); // by Count
         FileCount := aCollection.Count;
 
-        if (FileCount > 5) and (FileCount <= 10) and (aCollection.fSubCollectionList[0].Count > (FileCount - 1)) then
+        if (FileCount > 5) and (FileCount <= 10) and (aCollection.fCollectionList[0].Count > (FileCount - 1)) then
           result := cuUnique
         else
-          if (aCollection.fSubCollectionList[0].Count >= Round(FileCount * 0.9)) then
+          if (aCollection.fCollectionList[0].Count >= Round(FileCount * 0.9)) then
             result := cuUnique;
       end;
   end;
@@ -734,11 +762,11 @@ begin
   // use the most common CoverID
   aRoot := TRootCollection.Create(nil);
   try
-    aRoot.AddSubCollectionType(ctCoverID, csCount);
+    aRoot.AddSubCollectionType(ccCoverID, csCount);
     for i := 0 to fFileList.Count - 1 do
       aRoot.AddAudioFile(fFileList[i]);
-    aRoot.SortCollection(False);
-    fCoverID := TAudioFileCollection(aRoot.SubCollections[0]).fCoverID;
+    aRoot.Sort(False);
+    fCoverID := TAudioFileCollection(aRoot.Collection[0]).fCoverID;
 
     if fCoverID= '' then
       fCoverID := IntToStr(aRoot.CollectionCount);
@@ -757,10 +785,10 @@ begin
   // => use the most common Directory
   aRoot := TRootCollection.Create(nil);
   try
-    aRoot.AddSubCollectionType(ctPath, csCount);
+    aRoot.AddSubCollectionType(ccPath, csCount);
     for i := 0 to fFileList.Count - 1 do
       aRoot.AddAudioFile(fFileList[i]);
-    fDirectory := TAudioFileCollection(aRoot.SubCollections[0]).fDirectory;
+    fDirectory := TAudioFileCollection(aRoot.Collection[0]).fDirectory;
   finally
     aRoot.Free;
   end;
@@ -773,16 +801,16 @@ var
 begin
   aRoot := TRootCollection.Create(nil);
   try
-    aRoot.AddSubCollectionType(ctGenre, csCount);
+    aRoot.AddSubCollectionType(ccGenre, csCount);
     for i := 0 to fFileList.Count - 1 do
       aRoot.AddAudioFile(fFileList[i]);
 
     case HasUniqueValue(aRoot) of
       cuUnique: begin
-          if TAudioFileCollection(aRoot.SubCollections[0]).fGenre = '' then
+          if TAudioFileCollection(aRoot.Collection[0]).fGenre = '' then
             fGenre := rsCollectionDataUnknown
           else
-            fGenre := TAudioFileCollection(aRoot.SubCollections[0]).fGenre;
+            fGenre := TAudioFileCollection(aRoot.Collection[0]).fGenre;
       end;
       cuSampler: fGenre := CoverFlowText_VariousGenres
     else
@@ -802,13 +830,13 @@ begin
   // common year: just get the most frequent year
   aRoot := TRootCollection.Create(nil);
   try
-    aRoot.AddSubCollectionType(ctYear, csCount);
+    aRoot.AddSubCollectionType(ccYear, csCount);
     for i := 0 to fFileList.Count - 1 do
       aRoot.AddAudioFile(fFileList[i]);
 
     case HasUniqueValue(aRoot) of
-      cuUnique: fYear := TAudioFileCollection(aRoot.SubCollections[0]).fYear;
-      cuSampler: fYear := TAudioFileCollection(aRoot.SubCollections[0]).fYear;
+      cuUnique: fYear := TAudioFileCollection(aRoot.Collection[0]).fYear;
+      cuSampler: fYear := TAudioFileCollection(aRoot.Collection[0]).fYear;
     else
       //cuInvalid
        fYear := -1
@@ -835,23 +863,21 @@ begin
 end;
 
 procedure TAudioFileCollection.Analyse(recursive: Boolean);
-var str1: UnicodeString;
-    maxidx, i, fehlstelle: Integer;
-    aStringlist: TStringList;
-    newestAge, currentAge: TDateTime;
+var
+  i: Integer;
 begin
   if recursive then
-    for i := 0 to fSubCollectionList.Count - 1 do
-      fSubCollectionList[i].Analyse(recursive);
+    for i := 0 to fCollectionList.Count - 1 do
+      fCollectionList[i].Analyse(recursive);
 
   if (fFileList.Count = 0) or (not fNeedAnalysis) then
     exit; // nothing more to do in that case
 
-  case self.fCollectionType of
-    ctNone: ;
-    ctRoot: ;
-    ctArtist: ;
-    ctAlbum: begin
+  case self.fContent of
+    ccNone: ;
+    ccRoot: ;
+    ccArtist: ;
+    ccAlbum: begin
           // like in the "Coverflow"
           GetCommonArtist;
           GetCommonAlbum;
@@ -861,7 +887,7 @@ begin
           GetCommonDirectory;
           getCommonCoverID;
     end;
-    ctDirectory: begin
+    ccDirectory: begin
           // maybe useful for different sortings than "by directory name"
           //GetCommonArtist;
           //GetCommonAlbum;
@@ -869,11 +895,11 @@ begin
           //GetCommonYear;
           GetCommonFileAge;
     end;
-    ctGenre: ;
-    ctDecade: ;
-    ctYear: ;
-    ctFileAgeYear: ;
-    ctFileAgeMonth: ;
+    ccGenre: ;
+    ccDecade: ;
+    ccYear: ;
+    ccFileAgeYear: ;
+    ccFileAgeMonth: ;
   end;
   // Analysis done.
   fNeedAnalysis := False;
@@ -884,28 +910,6 @@ begin
   result := AnsiLowerCase(aAudioFile.Artist);
 end;
 
-
-{
-PathStructure := TStringlist.create;
-  try
-    Explode('\', aAudioFile.Pfad, PathStructure);
-    // fix network paths starting with "\\"
-    if (PathStructure.Count >= 3)
-      and (PathStructure[0] = '')
-      and (PathStructure[1] = '')
-    then begin
-      PathStructure[2] := '\\' + PathStructure[2];
-      startIdx := 2;
-    end else
-      startIdx := 0;
-
-    if (PathStructure.Count > startIdx) then
-      AddRecursively(startIdx, self)
-  finally
-    PathStructure.Free;
-  end;
-
-}
 function TAudioFileCollection.GenerateDirectoryAlbumKey(aAudioFile: TAudioFile): String;
 var
   PathStructure: TStringlist;
@@ -1052,17 +1056,17 @@ begin
   result := False;
   case fInsertMode of
     imList: begin
-        for i := 0 to fSubCollectionList.Count - 1 do begin
-          if fSubCollectionList[i].fKey = aKey then begin
-            Value := fSubCollectionList[i];
+        for i := 0 to fCollectionList.Count - 1 do begin
+          if fCollectionList[i].fKey = aKey then begin
+            Value := fCollectionList[i];
             result := True;
             break;
           end;
         end;
     end;
     imDictionary: begin
-      if fSubCollectionDict.ContainsKey(aKey) then
-        if fSubCollectionDict.TryGetValue(aKey, aCollection) then
+      if fCollectionDict.ContainsKey(aKey) then
+        if fCollectionDict.TryGetValue(aKey, aCollection) then
         begin
           Value := aCollection;
           result := True;
@@ -1076,68 +1080,50 @@ var
   i: Integer;
   aCollection: TAudioFileCollection;
 begin
-  fSubCollectionDict := TAudioFileCollectionDict.Create(2 * fSubCollectionList.Count);
-  for i := 0 to fSubCollectionList.Count - 1 do begin
-    aCollection := fSubCollectionList[i];
-    fSubCollectionDict.Add(aCollection.fKey, aCollection);
+  fCollectionDict := TAudioFileCollectionDict.Create(2 * fCollectionList.Count);
+  for i := 0 to fCollectionList.Count - 1 do begin
+    aCollection := fCollectionList[i];
+    fCollectionDict.Add(aCollection.fKey, aCollection);
   end;
   fInsertMode := imDictionary;
 end;
 
-function TAudioFileCollection.InitNewCollection(aKey: String): TAudioFileCollection;
+function TAudioFileCollection.InitNewCollection(aKey: String; CollectionMode: teFileCollectionMode = cmDefault): TAudioFileCollection;
 begin
   fNeedSorting := True;
-  result := TAudioFileCollection.Create(fOwnerCategory, fRootCollection, fLevel + 1);
-  result.fParentCollection := self;
+  result := TAudioFileCollection.Create(fOwnerCategory, fRoot, fLevel + 1, CollectionMode);
+  result.fParent := self;
   result.fKey := aKey;
 
   case fInsertMode of
     imList: begin
-      fSubCollectionList.Add(result);
+      fCollectionList.Add(result);
     end;
     imDictionary: begin
-      fSubCollectionList.Add(result);
-      fSubCollectionDict.Add(aKey, result);
+      fCollectionList.Add(result);
+      fCollectionDict.Add(aKey, result);
     end;
   end;
 
-  if (fInsertMode = imList) and (fSubCollectionList.Count > MAX_LIST_SIZE) then
-    SwitchToDictionary;
-end;
-
-function TAudioFileCollection.InitNewPathCollection(aKey: String): TAudioFileCollection;
-begin
-  result := TAudioFileCollection.Create(fOwnerCategory, fRootCollection, fLevel + 1, True);
-  result.fParentCollection := self;
-  result.fKey := aKey;
-
-  case fInsertMode of
-    imList: begin
-      fSubCollectionList.Add(result);
-    end;
-    imDictionary: begin
-      fSubCollectionList.Add(result);
-      fSubCollectionDict.Add(aKey, result);
-    end;
-  end;
-
-  if (fInsertMode = imList) and (fSubCollectionList.Count > MAX_LIST_SIZE) then
+  if (fInsertMode = imList) and (fCollectionList.Count > MAX_LIST_SIZE) then
     SwitchToDictionary;
 end;
 
 function TAudioFileCollection.MatchPrefix(aPrefix: String): Boolean;
 begin
-  case self.fCollectionType of
-    ctNone: result := False;
-    ctRoot: result := False;
-    ctArtist: result := AnsiStartsText(aPrefix, fArtist);
-    ctAlbum: result := AnsiStartsText(aPrefix, fArtist) or AnsiStartsText(aPrefix, fAlbum);
-    ctDirectory: result := AnsiStartsText(aPrefix, fKey);
-    ctGenre: result := AnsiStartsText(aPrefix, fGenre);
-    ctDecade: result := AnsiStartsText(aPrefix, IntToStr(fYear));
-    ctYear: result := AnsiStartsText(aPrefix, IntToStr(fYear));
-    ctFileAgeYear: result := AnsiStartsText(aPrefix, FormatDateTime('yyyy', fFileAge, fLibraryFormatSettings));
-    ctFileAgeMonth: result := AnsiStartsText(aPrefix, FormatDateTime('mmmm yy', fFileAge, fLibraryFormatSettings));
+  case self.fContent of
+    ccNone: result := False;
+    ccRoot: result := False;
+    ccArtist: result := AnsiStartsText(aPrefix, fArtist);
+    ccAlbum: result := AnsiStartsText(aPrefix, fArtist) or AnsiStartsText(aPrefix, fAlbum);
+    ccDirectory: result := AnsiStartsText(aPrefix, fKey);
+    ccGenre: result := AnsiStartsText(aPrefix, fGenre);
+    ccDecade: result := AnsiStartsText(aPrefix, IntToStr(fYear));
+    ccYear: result := AnsiStartsText(aPrefix, IntToStr(fYear));
+    ccFileAgeYear: result := AnsiStartsText(aPrefix, FormatDateTime('yyyy', fFileAge, fLibraryFormatSettings));
+    ccFileAgeMonth: result := AnsiStartsText(aPrefix, FormatDateTime('mmmm yy', fFileAge, fLibraryFormatSettings));
+  else
+    result := AnsiStartsText(aPrefix, fKey);
   end;
 end;
 
@@ -1149,15 +1135,15 @@ begin
     result := 1;
 end;
 
-function TAudioFileCollection.GetCollectionIndex(aCollection: TAudioCollection): Integer;
+function TAudioFileCollection.IndexOf(aCollection: TAudioCollection): Integer;
 begin
   if assigned(aCollection) and (aCollection is TAudioFileCollection)  then
-    result := fSubCollectionList.IndexOf(TAudioFileCollection(aCollection))
+    result := fCollectionList.IndexOf(TAudioFileCollection(aCollection))
   else
     result := 0;
 end;
 
-procedure TAudioFileCollection.AddAudioFileByArtist(aAudioFile: TAudioFile);
+procedure TAudioFileCollection.AddByArtist(aAudioFile: TAudioFile);
 var
   aCollection: TAudioFileCollection;
   aKey: String;
@@ -1170,7 +1156,7 @@ begin
   aCollection.AddAudioFile(aAudioFile);
 end;
 
-procedure TAudioFileCollection.AddAudioFileByAlbum(aAudioFile: TAudioFile);
+procedure TAudioFileCollection.AddByAlbum(aAudioFile: TAudioFile);
 var
   aCollection: TAudioFileCollection;
   aKey: String;
@@ -1183,7 +1169,7 @@ begin
   aCollection.AddAudioFile(aAudioFile);
 end;
 
-procedure TAudioFileCollection.AddAudioFileByGenre(aAudioFile: TAudioFile);
+procedure TAudioFileCollection.AddByGenre(aAudioFile: TAudioFile);
 var
   aCollection: TAudioFileCollection;
   aKey: String;
@@ -1196,14 +1182,13 @@ begin
   aCollection.AddAudioFile(aAudioFile);
 end;
 
-procedure TAudioFileCollection.AddAudioFileByDecade(aAudioFile: TAudioFile);
+procedure TAudioFileCollection.AddByDecade(aAudioFile: TAudioFile);
 var
   aCollection: TAudioFileCollection;
   Year: Integer;
   decadeKey: String;
 begin
   decadeKey := GenerateDecadeKey(aAudioFile, Year);
-
   if not TryGetCollection(decadeKey, aCollection) then begin
     aCollection := InitNewCollection(decadeKey);
     aCollection.fYear := YearToDecade(Year);
@@ -1211,7 +1196,7 @@ begin
   aCollection.AddAudioFile(aAudioFile);
 end;
 
-procedure TAudioFileCollection.AddAudioFileByPath (aAudioFile: TAudioFile);
+procedure TAudioFileCollection.AddByPath (aAudioFile: TAudioFile);
 var
   aCollection: TAudioFileCollection;
   aKey: String;
@@ -1224,7 +1209,7 @@ begin
   aCollection.AddAudioFile(aAudioFile);
 end;
 
-procedure TAudioFileCollection.AddAudioFileByCoverID(aAudioFile: TAudioFile);
+procedure TAudioFileCollection.AddByCoverID(aAudioFile: TAudioFile);
 var
   aCollection: TAudioFileCollection;
   aKey: String;
@@ -1237,100 +1222,90 @@ begin
   aCollection.AddAudioFile(aAudioFile);
 end;
 
-procedure TAudioFileCollection.AddAudioFileByYear(aAudioFile: TAudioFile);
+procedure TAudioFileCollection.AddByYear(aAudioFile: TAudioFile);
 var
   aCollection: TAudioFileCollection;
   aKey : String;
   Year: Integer;
 begin
   aKey := GenerateYearKey(aAudioFile, Year);
-
   if not TryGetCollection(aKey, aCollection) then begin
     aCollection := InitNewCollection(aKey);
     aCollection.fYear := Year;
   end;
   aCollection.AddAudioFile(aAudioFile);
+end;
 
-  {if Year <= 0 then begin
-    // invalid Year ("0" is also considered invalid here)
-    if not TryGetValue(rsUnknownYear, aCollection) then begin
-      aCollection := TAudioFileCollection.Create(ctYear, fSecondaryDictType, ctNone);
-      aCollection.fKeyData.Year := -1;    // ??
-      self.Add(rsUnknownYear, aCollection);
-    end;
+procedure TAudioFileCollection.AddForTagCloud(aAudioFile: TAudioFile);
+var
+  aCollection: TAudioFileCollection;
+  i: Integer;
+  AutoTags, LastFMTags: TStringList;
 
-  end else
+  function IsParentTag(newTag: String): Boolean;
+  var
+    col: TAudioFileCollection;
   begin
-    // valid Year
-    if not NempOrganizerSettings.GroupYearsByDecade then begin
-      // just one entry for every year
-      if not TryGetValue(aKey, aCollection) then begin
-        aCollection := TAudioFileCollection.Create(ctYear, fSecondaryDictType, ctNone);
-        aCollection.fKeyData.Year := Year;
-        self.Add(aKey, aCollection);
-      end;
-    end else
-    begin
-      // organize years in SubRacks by decade
-      decade := Year mod 10;
-      decadeKey := IntToStr(decade);
-      // get Collection "decade"
-      if not TryGetValue(decadeKey, decadeCollection) then begin
-        decadeCollection := TAudioFileCollection.Create(ctYear, ctYear, fSecondaryDictType);
-        decadeCollection.fKeyData.Year := Decade;
-        self.Add(decadeKey, decadeCollection);
-      end;
-      // get collection "year" within this decade
-      if not decadeCollection.fSubRack.TryGetValue(aKey, aCollection) then begin
-        aCollection := TAudioFileCollection.Create(ctYear, fSecondaryDictType, ctNone);
-        aCollection.fKeyData.Year := Year;
-        decadeCollection.fSubRack.Add(aKey, aCollection);
-      end;
+    result := False;
+    col := self;
+    while (not (col is TRootCollection)) and (not result) do begin
+      result := result or (col.Key = newTag);
+      col := col.Parent;
     end;
   end;
 
-  aCollection.AddAudioFile(aAudioFile);    }
+  procedure AddTag(newTag: String; IsLastFMTag: Boolean = False);
+  begin
+    if not IsParentTag(newTag) then begin
+      if not TryGetCollection(newtag, aCollection) then begin
+        aCollection := InitNewCollection(newTag, cmCloud);
+      end;
+      if aCollection.fLastAddedAudioFile <> aAudioFile then
+        aCollection.AddAudioFile(aAudioFile);
+      if IsLastFMTag then
+        aCollection.IsAutotag := False;
+    end;
+  end;
+
+begin
+  AutoTags := TStringList.Create;
+  LastFMTags := TStringList.Create;
+  try
+    aAudioFile.GetAllTags(AutoTags, LastFMTags);
+    for i := 0 to AutoTags.Count - 1 do
+      AddTag(Autotags[i]);
+    for i := 0 to LastFMTags.Count - 1 do
+      AddTag(LastFMTags[i], True);
+  finally
+    AutoTags.Free;
+    LastFMtags.Free;
+  end;
 end;
 
 procedure TAudioFileCollection.Clear;
 begin
   fCount := 0;
   fNeedSorting := False;
+  fIsAutoTag := True;
   fFileList.Clear;
-  fSubCollectionList.Clear;
-  if assigned(fSubCollectionDict) then
-    fSubCollectionDict.Clear;
-end;
-
-{
-  Empty:
-  Remove all Files from the Collection, but leave the structure as it is.
-  Used for refilling the collections after a refresh.
-}
-procedure TAudioFileCollection.Empty;
-var
-  i: Integer;
-begin
-  fCount := 0;
-  fNeedSorting := False;
-  fFileList.Clear;
-  for i := 0 to fSubCollectionList.Count - 1 do
-    fSubCollectionList[i].Empty;
+  fCollectionList.Clear;
+  if assigned(fCollectionDict) then
+    fCollectionDict.Clear;
 end;
 
 procedure TAudioFileCollection.RemoveEmptyCollections;
 var
   i: Integer;
 begin
-  for i := fSubCollectionList.Count - 1 downto 0 do begin
-    if fSubCollectionList[i].Count = 0 then
-      RemoveCollection(fSubCollectionList[i])
+  for i := fCollectionList.Count - 1 downto 0 do begin
+    if fCollectionList[i].Count = 0 then
+      RemoveCollection(fCollectionList[i])
     else
-      fSubCollectionList[i].RemoveEmptyCollections;
+      fCollectionList[i].RemoveEmptyCollections;
   end;
 end;
 
-procedure TAudioFileCollection.AddAudioFileByFileAgeYear (aAudioFile: TAudioFile);
+procedure TAudioFileCollection.AddByFileAgeYear (aAudioFile: TAudioFile);
 var
   aCollection: TAudioFileCollection;
   aKey: String;
@@ -1344,7 +1319,7 @@ begin
   aCollection.AddAudioFile(aAudioFile);
 end;
 
-procedure TAudioFileCollection.AddAudioFileByFileAgeMonth(
+procedure TAudioFileCollection.AddByFileAgeMonth(
   aAudioFile: TAudioFile);
 var
   aCollection: TAudioFileCollection;
@@ -1359,7 +1334,7 @@ begin
   aCollection.AddAudioFile(aAudioFile);
 end;
 
-procedure TAudioFileCollection.AddAudioFileByDirectory (aAudioFile: TAudioFile);
+procedure TAudioFileCollection.AddByDirectory (aAudioFile: TAudioFile);
 var
   PathStructure: TStringlist;
   startIdx: Integer;
@@ -1376,7 +1351,7 @@ var
       newKey := PathStructure[idx];
 
       if not aCurrentCollection.TryGetCollection(newKey, aCollection) then begin
-        aCollection := aCurrentCollection.InitNewPathCollection(newKey);
+        aCollection := aCurrentCollection.InitNewCollection(newKey, cmDirectory);
         aCollection.fDirectory := newKey;
       end;
 
@@ -1409,23 +1384,28 @@ end;
 procedure TAudioFileCollection.AddAudioFile(aAudioFile: TAudioFile);
 begin
   inc(fCount);
-
-  case self.fSubCollectionType of
-    ctNone: begin
+  fLastAddedAudioFile := aAudioFile;
+  case self.fChildContent of
+    ccNone: begin
       fFileList.Add(aAudioFile);
       fNeedAnalysis := True;
     end;
-    ctRoot: ; // should never happen
-    ctArtist: AddAudioFileByArtist(aAudioFile);
-    ctAlbum: AddAudioFileByAlbum(aAudioFile);
-    ctDirectory: AddAudioFileByDirectory(aAudioFile);
-    ctGenre: AddAudioFileByGenre(aAudioFile);
-    ctDecade: AddAudioFileByDecade(aAudioFile);
-    ctYear: AddAudioFileByYear(aAudioFile);
-    ctFileAgeYear: AddAudioFileByFileAgeYear(aAudioFile);
-    ctFileAgeMonth: AddAudioFileByFileAgeMonth(aAudioFile);
-    ctPath: AddAudioFileByPath(aAudioFile);
-    ctCoverID: AddAudioFileByCoverID(aAudioFile);
+    ccRoot: ; // should never happen
+    ccArtist: AddByArtist(aAudioFile);
+    ccAlbum: AddByAlbum(aAudioFile);
+    ccDirectory: AddByDirectory(aAudioFile);
+    ccGenre: AddByGenre(aAudioFile);
+    ccDecade: AddByDecade(aAudioFile);
+    ccYear: AddByYear(aAudioFile);
+    ccFileAgeYear: AddByFileAgeYear(aAudioFile);
+    ccFileAgeMonth: AddByFileAgeMonth(aAudioFile);
+    ccTagCloud: begin
+      fFileList.Add(aAudioFile);
+      fNeedAnalysis := True;
+      AddForTagCloud(aAudioFile);
+    end;
+    ccPath: AddByPath(aAudioFile);
+    ccCoverID: AddByCoverID(aAudioFile);
   end;
 end;
 
@@ -1440,7 +1420,7 @@ begin
     result := Nil;
 end;
 
-function TAudioFileCollection.GetSubCollectionByKey(aKey: String): TAudioFileCollection;
+function TAudioFileCollection.GetCollectionByKey(aKey: String): TAudioFileCollection;
 var
   aCollection: TAudioFileCollection;
 begin
@@ -1502,42 +1482,42 @@ var
   aKey: String;
   dummy: Integer;
 begin
-  case self.fSubCollectionType of
-    ctNone: begin
+  case self.fChildContent of
+    ccNone: begin
       if (not CheckExist) or fFileList.Contains(aAudioFile) then
         result := self
       else
         result := Nil;
     end;
-    ctRoot: result := Nil; // should never happen
-    ctArtist: begin
+    ccRoot: result := Nil; // should never happen
+    ccArtist: begin
       aKey := GenerateArtistKey(aAudioFile);
       result := SearchAudioFileByKey(aKey, aAudioFile, CheckExist);
     end;
-    ctAlbum: begin
+    ccAlbum: begin
       aKey := GenerateAlbumKey(aAudioFile);
       result := SearchAudioFileByKey(aKey, aAudioFile, CheckExist);
     end;
-    ctDirectory: begin
+    ccDirectory: begin
       result := SearchAudioFileByPath(aAudioFile, CheckExist);
     end;
-    ctGenre: begin
+    ccGenre: begin
       aKey := GenerateGenreKey(aAudioFile);
       result := SearchAudioFileByKey(aKey, aAudioFile, CheckExist);
     end;
-    ctDecade: begin
+    ccDecade: begin
       aKey := GenerateDecadeKey(aAudioFile, dummy);
       result := SearchAudioFileByKey(aKey, aAudioFile, CheckExist);
     end;
-    ctYear:  begin
+    ccYear:  begin
       aKey := GenerateYearKey(aAudioFile, dummy);
       result := SearchAudioFileByKey(aKey, aAudioFile, CheckExist);
     end;
-    ctFileAgeYear: begin
+    ccFileAgeYear: begin
       aKey := GenerateFileAgeYearKey(aAudioFile);
       result := SearchAudioFileByKey(aKey, aAudioFile, CheckExist);
     end;
-    ctFileAgeMonth:  begin
+    ccFileAgeMonth:  begin
       aKey := GenerateFileAgeMonthKey(aAudioFile);
       result := SearchAudioFileByKey(aKey, aAudioFile, CheckExist);
     end;
@@ -1555,97 +1535,55 @@ begin
     result := self
   else
   begin
-    for i := 0 to fSubCollectionList.Count - 1 do begin
-      result := fSubCollectionList[i].SearchEditedAudioFile(aAudioFile);
+    for i := 0 to fCollectionList.Count - 1 do begin
+      result := fCollectionList[i].SearchEditedAudioFile(aAudioFile);
       if assigned(result) then
         break;
     end;
   end;
 end;
 
-procedure TAudioFileCollection.SortCollection(doRecursive: Boolean = True);
+procedure TAudioFileCollection.Sort(doRecursive: Boolean = True);
 var
   i: Integer;
 begin
   if fNeedSorting then begin
     case fMissingCoverMode of
-      mcFirst: fSubCollectionList.Sort(TComparer<TAudioFileCollection>.Construct( function (const item1, item2: TAudioFileCollection): Integer
+      mcFirst: fCollectionList.Sort(TComparer<TAudioFileCollection>.Construct( function (const item1, item2: TAudioFileCollection): Integer
                   begin
                     result := SortCollection_MissingCoverFirst(item1, item2);
                     if result = 0 then
-                      result := NempCollectionComparer[fSubCollectionSorting](item1, item2);
+                      result := NempCollectionComparer[fChildSorting](item1, item2);
                   end));
-      mcIgnore:  fSubCollectionList.Sort(TComparer<TAudioFileCollection>.Construct( function (const item1, item2: TAudioFileCollection): Integer
+      mcIgnore:  fCollectionList.Sort(TComparer<TAudioFileCollection>.Construct( function (const item1, item2: TAudioFileCollection): Integer
                   begin
-                    result := NempCollectionComparer[fSubCollectionSorting](item1, item2);
+                    result := NempCollectionComparer[fChildSorting](item1, item2);
                   end));
-      mcEnd: fSubCollectionList.Sort(TComparer<TAudioFileCollection>.Construct( function (const item1, item2: TAudioFileCollection): Integer
+      mcEnd: fCollectionList.Sort(TComparer<TAudioFileCollection>.Construct( function (const item1, item2: TAudioFileCollection): Integer
                   begin
                     result := SortCollection_MissingCoverLast(item1, item2);
                     if result = 0 then
-                      result := NempCollectionComparer[fSubCollectionSorting](item1, item2);
+                      result := NempCollectionComparer[fChildSorting](item1, item2);
                   end));
     end;
-
-  (*
-  procedure TMedienBibliothek.SortCoverList(aList: TNempCoverList);
-var
-  PreCoverSort, ActualCoverSort: TNempCoverCompare;
-begin
-  case MissingCoverMode of
-    0: PreCoverSort := PreCoverSort_MissingFirst;
-    2: PreCoverSort := PreCoverSort_MissingLast;
-  else
-    PreCoverSort := PreCoverSort_Default;
-  end;
-
-  case CoverSortorder of
-    1: ActualCoverSort := ActualCoverSort_Artist;
-    2: ActualCoverSort := ActualCoverSort_Album;
-    3: ActualCoverSort := ActualCoverSort_Genre;
-    4: ActualCoverSort := ActualCoverSort_Jahr;
-    5: ActualCoverSort := ActualCoverSort_GenreYear;
-    6: ActualCoverSort := ActualCoverSort_DirectoryArtist;
-    7: ActualCoverSort := ActualCoverSort_DirectoryAlbum;
-    8: ActualCoverSort := ActualCoverSort_FileAgeAlbum;
-    9: ActualCoverSort := ActualCoverSort_FileAgeArtist;
-  else
-    ActualCoverSort := ActualCoverSort_Artist;
-  end;
-
-  aList.Sort(TComparer<TNempCover>.Construct( function (const item1, item2: TNempCover): Integer
-    begin
-      result := PreCoverSort(item1, item2);
-      if result = 0 then
-        result := ActualCoverSort(item1, item2);
-    end));
-end;
-
-Sowas nutzen für Coverflow-RootCollection.Sort
-In einer Property den PreSort-mode merken, setzen beim Create des Coverflow-Mode bzw. dem bauen der Rootcolelcitons
-
-  *)
-
-
-    //fSubCollectionList.Sort(fSubCollectionComparer);
     fNeedSorting := False;
   end;
   if doRecursive then begin
-    for i := 0 to self.fSubCollectionList.Count - 1 do
-      fSubCollectionList[i].SortCollection(doRecursive);
+    for i := 0 to self.fCollectionList.Count - 1 do
+      fCollectionList[i].Sort(doRecursive);
   end;
 end;
 
 
-procedure TAudioFileCollection.ReSortCollection(newSorting: teCollectionSorting);
+procedure TAudioFileCollection.ReSort(newSorting: teCollectionSorting);
 begin
   // set Comparer
   // fSubCollectionComparer := GetComparer(newSorting);
-  fSubCollectionSorting := newSorting;
+  fChildSorting := newSorting;
   // sort the collection
   // fSubCollectionList.Sort(fSubCollectionComparer);
   fNeedSorting := True;
-  SortCollection(False);
+  Sort(False);
   fNeedSorting := False;
 end;
 
@@ -1663,14 +1601,13 @@ begin
     if ForceSorting then
       fNeedSorting := True;
 
-    fSubCollectionSorting := fRootCollection.GetCollectionCompareType(aLevel);
-    SortCollection(False);
-    // fSubCollectionList.Sort(fSubCollectionComparer);
+    fChildSorting := fRoot.GetCollectionCompareType(aLevel);
+    Sort(False);
     fNeedSorting := False;
   end else
   begin
-    for i := 0 to fSubCollectionList.Count - 1 do
-      fSubCollectionList[i].SortCollectionLevel(aLevel, ForceSorting);
+    for i := 0 to fCollectionList.Count - 1 do
+      fCollectionList[i].SortCollectionLevel(aLevel, ForceSorting);
   end;
 end;
 
@@ -1678,29 +1615,41 @@ procedure TAudioFileCollection.ReSortDirectoryCollection(newSorting: teCollectio
 var
   i: Integer;
 begin
-  fSubCollectionSorting := newSorting;
+  fChildSorting := newSorting;
   fNeedSorting := True;
-  SortCollection(False);
+  Sort(False);
   if recursive then
-    for i := 0 to fSubCollectionList.Count - 1 do
-      fSubCollectionList[i].ReSortDirectoryCollection(newSorting, recursive);
+    for i := 0 to fCollectionList.Count - 1 do
+      fCollectionList[i].ReSortDirectoryCollection(newSorting, recursive);
 end;
 
-function TAudioFileCollection.GetSubCollection(Index: Integer): TAudioCollection;
+procedure TAudioFileCollection.ReSortTagCloudCollection(newSorting: teCollectionSorting; recursive: Boolean);
+var
+  i: Integer;
 begin
-  result := fSubCollectionList[Index];
+  fChildSorting := newSorting;
+  fNeedSorting := True;
+  Sort(False);
+  if recursive then
+    for i := 0 to fCollectionList.Count - 1 do
+      fCollectionList[i].ReSortDirectoryCollection(newSorting, recursive);
+end;
+
+function TAudioFileCollection.GetCollection(Index: Integer): TAudioCollection;
+begin
+  result := fCollectionList[Index];
 end;
 
 function TAudioFileCollection.GetCollectionCount: Integer;
 begin
-  result := fSubCollectionList.Count;
+  result := fCollectionList.Count;
 end;
 
 procedure TAudioFileCollection.DecreaseCount(recursive: Boolean);
 begin
   dec(fCount);
-  if recursive and (fLevel > 0) and assigned(fParentCollection) then
-    fParentCollection.DecreaseCount(recursive);
+  if recursive and (fLevel > 0) and assigned(fParent) then
+    fParent.DecreaseCount(recursive);
 end;
 
 procedure TAudioFileCollection.RemoveAudioFile(aAudioFile: TAudioFile);
@@ -1712,6 +1661,22 @@ begin
   if aIdx > -1 then begin
     fFileList.Delete(aIdx);
     DecreaseCount(True);
+  end;
+end;
+
+procedure TAudioFileCollection.RemoveAudioFileFromTagCloud(aAudioFile: TAudioFile);
+var
+  i, aIdx: Integer;
+begin
+  if fContent <> ccTagCloud then
+    exit;
+
+  aIdx := fFileList.IndexOf(aAudioFile);
+  if aIdx > -1 then begin
+    dec(fCount);
+    fFileList.Delete(aIdx);
+    for i := 0 to CollectionCount - 1 do
+      TAudioFileCollection(Collection[i]).RemoveAudioFileFromTagCloud(aAudioFile);
   end;
 end;
 
@@ -1748,9 +1713,9 @@ begin
     fOnBeforeDeleteCollection(aCollection);
 
   if fInsertMode = imDictionary then
-    fSubCollectionDict.Remove(aCollection.fKey);
+    fCollectionDict.Remove(aCollection.fKey);
 
-  fSubCollectionList.Remove(aCollection); // this will also free the collection
+  fCollectionList.Remove(aCollection); // this will also free the collection
 
   if assigned(self.fOnAfterDeleteCollection) then
     fOnAfterDeleteCollection(aCollection);
@@ -1766,81 +1731,107 @@ end;
 procedure TRootCollection.Reset;
 begin
   clear;
-  fCollectionTypeList.Clear;
-  fCaptionTypeList.Clear;
+  fCollectionConfigList.Clear;
+  fCaptionConfigList.Clear;
+end;
+
+procedure TRootCollection.ResetTagCloud;
+var
+  i: Integer;
+begin
+  if fChildContent = ccTagCloud then
+    for i := 0 to fCollectionList.Count - 1 do
+      tAudioFileCollection(Collection[i]).ClearSubCollections;
+end;
+
+function TRootCollection.ContainsContent(Value: teCollectionContent): Boolean;
+var
+  i: Integer;
+begin
+  result := False;
+  for i := 0 to fCollectionConfigList.Count - 1 do
+    result := result or (Value = fCollectionConfigList[i].CollectionContent);
+
+  if (not Result) and (Value = ccYear) then begin
+    // also check for content "Decade"
+    for i := 0 to fCollectionConfigList.Count - 1 do
+      result := result or (fCollectionConfigList[i].CollectionContent = ccDecade);
+  end;
 end;
 
 constructor TRootCollection.Create(aOwner: TLibraryCategory);
 begin
   inherited create(aOwner, Nil, 0);
-  fParentCollection := Nil;
-  fRootCollection := self;
-  fCollectionTypeList := TCollectionTypeList.Create;
-  fCaptionTypeList := TCollectionTypeList.Create;
+  fParent := Nil;
+  fRoot := self;
+  fCollectionConfigList := TCollectionConfigList.Create;
+  fCaptionConfigList := TCollectionConfigList.Create;
 
-  fCollectionType := ctRoot;
-  fSubCollectionType := ctNone;  // muss später bestimmt werden, nach dem Einfügen der SubCollectionTypes
+  fContent := ccRoot;
+  fChildContent := ccNone;  // muss später bestimmt werden, nach dem Einfügen der SubCollectionTypes
 end;
 
 destructor TRootCollection.Destroy;
 begin
-  fCollectionTypeList.Free;
-  fCaptionTypeList.Free;
+  fCollectionConfigList.Free;
+  fCaptionConfigList.Free;
   inherited;
 end;
 
-procedure TRootCollection.AddCaptionType(aType: TCollectionConfig);
+procedure TRootCollection.AddCaptionConfig(aType: TCollectionConfig);
 var
   newCaptionData: TCollectionConfig;
 begin
-  case aType.CollectionType of
-    ctNone,
-    ctRoot: ; // nothing todo
-    ctArtist,
-    ctAlbum,
-    ctDirectory,
-    ctGenre: newCaptionData.CollectionType := aType.CollectionType;
-    ctDecade,
-    ctYear: newCaptionData.CollectionType := ctYear;
-    ctFileAgeYear,
-    ctFileAgeMonth: newCaptionData.CollectionType := ctFileAgeYear;
+  case aType.CollectionContent of
+    ccNone,
+    ccRoot: ; // nothing todo
+    ccArtist,
+    ccAlbum,
+    ccDirectory,
+    ccGenre: newCaptionData.CollectionContent := aType.CollectionContent;
+    ccDecade,
+    ccYear: newCaptionData.CollectionContent := ccYear;
+    ccFileAgeYear,
+    ccFileAgeMonth: newCaptionData.CollectionContent := ccFileAgeYear;
+  else
+    newCaptionData.CollectionContent := aType.CollectionContent;
   end;
 
-  if (fCaptionTypeList.Count = 0)
-  or (fCaptionTypeList[fCaptionTypeList.Count-1].CollectionType <> newCaptionData.CollectionType)
+  if (fCaptionConfigList.Count = 0)
+  or (fCaptionConfigList[fCaptionConfigList.Count-1].CollectionContent <> newCaptionData.CollectionContent)
   then
-    fCaptionTypeList.Add(newCaptionData)
+    fCaptionConfigList.Add(newCaptionData)
 end;
 
-procedure TRootCollection.AddSubCollectionType(aType: teCollectionType; aSortingType: teCollectionSorting);
+procedure TRootCollection.AddSubCollectionType(aType: teCollectionContent; aSortingType: teCollectionSorting);
 var
   newData: TCollectionConfig;
 begin
-  newData.CollectionType := aType;
+  newData.CollectionContent := aType;
   newData.CollectionSorting := aSortingType;
-  fCollectionTypeList.Add(newData);
-  fSubCollectionType := fCollectionTypeList[0].CollectionType;
-  fSubCollectionSorting := fCollectionTypeList[0].CollectionSorting;
-  AddCaptionType(newData);
+  fCollectionConfigList.Add(newData);
+  fChildContent := fCollectionConfigList[0].CollectionContent;
+  fChildSorting := fCollectionConfigList[0].CollectionSorting;
+  AddCaptionConfig(newData);
 end;
 
-procedure TRootCollection.InsertSubCollectionType(Index: Integer; aType: teCollectionType; aSortingType: teCollectionSorting);
+procedure TRootCollection.InsertSubCollectionType(Index: Integer; aType: teCollectionContent; aSortingType: teCollectionSorting);
 var
   newData: TCollectionConfig;
 begin
-  newData.CollectionType := aType;
+  newData.CollectionContent := aType;
   newData.CollectionSorting := aSortingType;
-  fCollectionTypeList.Insert(Index, newData);
-  fSubCollectionType := fCollectionTypeList[0].CollectionType;
-  fSubCollectionSorting := fCollectionTypeList[0].CollectionSorting;
+  fCollectionConfigList.Insert(Index, newData);
+  fChildContent := fCollectionConfigList[0].CollectionContent;
+  fChildSorting := fCollectionConfigList[0].CollectionSorting;
   ReBuildCaptionTypes;
 end;
 
 procedure TRootCollection.MoveSubCollectionType(curIndex, newIndex: Integer);
 begin
-  fCollectionTypeList.Move(curIndex, newIndex);
-  fSubCollectionType := fCollectionTypeList[0].CollectionType;
-  fSubCollectionSorting := fCollectionTypeList[0].CollectionSorting;
+  fCollectionConfigList.Move(curIndex, newIndex);
+  fChildContent := fCollectionConfigList[0].CollectionContent;
+  fChildSorting := fCollectionConfigList[0].CollectionSorting;
   ReBuildCaptionTypes;
 end;
 
@@ -1849,27 +1840,27 @@ procedure TRootCollection.ChangeSubCollectionSorting(Index: Integer;
 var
   changedConfig: TCollectionConfig;
 begin
-  changedConfig.CollectionType := fCollectionTypeList[Index].CollectionType;
+  changedConfig.CollectionContent := fCollectionConfigList[Index].CollectionContent;
   changedConfig.CollectionSorting := aSortingType;
-  fCollectionTypeList[Index] := changedConfig;
+  fCollectionConfigList[Index] := changedConfig;
 
-  fSubCollectionSorting := fCollectionTypeList[0].CollectionSorting;
+  fChildSorting := fCollectionConfigList[0].CollectionSorting;
   ReBuildCaptionTypes;
 end;
 
-procedure TRootCollection.ChangeSubCollectionType(Index: Integer; aType: teCollectionType; aSortingType: teCollectionSorting);
+procedure TRootCollection.ChangeSubCollectionType(Index: Integer; aType: teCollectionContent; aSortingType: teCollectionSorting);
 var
   changedConfig: TCollectionConfig;
 begin
-  changedConfig.CollectionType := aType;
+  changedConfig.CollectionContent := aType;
   changedConfig.CollectionSorting := aSortingType;
 
-  fCollectionTypeList[Index] := changedConfig;
+  fCollectionConfigList[Index] := changedConfig;
 
   //fCollectionTypeList[Index].CollectionType := aType;
   //fCollectionTypeList[Index].CollectionSorting := aSortingType;
-  fSubCollectionType := fCollectionTypeList[0].CollectionType;
-  fSubCollectionSorting := fCollectionTypeList[0].CollectionSorting;
+  fChildContent := fCollectionConfigList[0].CollectionContent;
+  fChildSorting := fCollectionConfigList[0].CollectionSorting;
   ReBuildCaptionTypes;
 end;
 
@@ -1877,38 +1868,31 @@ procedure TRootCollection.ReBuildCaptionTypes;
 var
   i: Integer;
 begin
-  fCaptionTypeList.Clear;
-  for i := 0 to fCollectionTypeList.Count-1 do
-    AddCaptionType(fCollectionTypeList[i]);
+  fCaptionConfigList.Clear;
+  for i := 0 to fCollectionConfigList.Count-1 do
+    AddCaptionConfig(fCollectionConfigList[i]);
 end;
 
 procedure TRootCollection.RemoveSubCollection(Layer: Integer);
 begin
   // Layer entfernen, CaptionTyplist erneuern
-  fCollectionTypeList.Delete(Layer);
+  fCollectionConfigList.Delete(Layer);
   ReBuildCaptionTypes;
 end;
 
-function TRootCollection.GetSubCollectionType(aLevel: Integer): teCollectionType;
-begin
-  if (aLevel >= 0) and (aLevel < fCollectionTypeList.Count) then
-    result := fCollectionTypeList[aLevel].CollectionType
-  else
-    result := ctNone;
-end;
 
-(*function TRootCollection.GetCollectionComparer(aLevel: Integer): TCollectionComparer;
+function TRootCollection.GetSubCollectionType(aLevel: Integer): teCollectionContent;
 begin
-  if (aLevel >= 0) and (aLevel < fCollectionTypeList.Count) then
-    result := fCollectionTypeList[aLevel].Comparer
+  if (aLevel >= 0) and (aLevel < fCollectionConfigList.Count) then
+    result := fCollectionConfigList[aLevel].CollectionContent
   else
-    result := CompareCollection_Default;
-end;*)
+    result := ccNone;
+end;
 
 function TRootCollection.GetCollectionCompareType(aLevel: Integer): teCollectionSorting;
 begin
-  if (aLevel >= 0) and (aLevel < fCollectionTypeList.Count) then
-    result := fCollectionTypeList[aLevel].CollectionSorting
+  if (aLevel >= 0) and (aLevel < fCollectionConfigList.Count) then
+    result := fCollectionConfigList[aLevel].CollectionSorting
   else
     result := csDefault;
 end;
@@ -1917,56 +1901,86 @@ function TRootCollection.GetCaption: String;
 var
   i: Integer;
 begin
-  if fCaptionTypeList.Count > 0 then
-    result := RootCaptions[fCaptionTypeList[0].CollectionType];
+  if fCaptionConfigList.Count > 0 then
+    result := _(RootCaptions[fCaptionConfigList[0].CollectionContent]);
 
-  for i := 1 to fCaptionTypeList.Count - 1 do
-    result := result + ' - ' + RootCaptions[fCaptionTypeList[i].CollectionType];
-
-  // result := result + ' ('  + inttostr(fLevel) + ')';
+  for i := 1 to fCaptionConfigList.Count - 1 do
+    result := result + ' - ' + _(RootCaptions[fCaptionConfigList[i].CollectionContent]);
 end;
 
 function TRootCollection.GetLevelCaption(Index: Integer): String;
 begin
-  if (fCollectionTypeList.Count > Index) and (Index >= 0) then
-    result := RootCaptionsExact[fCollectionTypeList[Index].CollectionType]
+  if (fCollectionConfigList.Count > Index) and (Index >= 0) then
+    result := _(RootCaptionsExact[fCollectionConfigList[Index].CollectionContent])
   else
     result := '';
 end;
 
 function TRootCollection.GetLayerDepth: Integer;
 begin
-  result := fCollectionTypeList.Count;
+  result := fCollectionConfigList.Count;
 end;
 
 function TRootCollection.GetIsDirectoryCollection: Boolean;
 begin
-  result := (fCollectionTypeList.Count > 0)
-      and (fCollectionTypeList[0].CollectionType = ctDirectory);
+  result := (fCollectionConfigList.Count > 0)
+      and (fCollectionConfigList[0].CollectionContent = ccDirectory);
+end;
+
+function TRootCollection.GetSpecialContent: teSpecialContent;
+begin
+  result := scRegular;
+  if fCollectionConfigList.Count > 0 then
+    case fCollectionConfigList[0].CollectionContent of
+      ccDirectory: result := scDirectory;
+      ccTagCloud: result := scTagCloud;
+    else
+      ; //ccNone, ccRoot, ccArtist, ccAlbum, ccGenre, ccDecade, ccYear, ccFileAgeYear, ccFileAgeMonth,
+    end;
 end;
 
 
 procedure TRootCollection.ResortLevel(aLevel: Integer; newSorting: teCollectionSorting);
 begin
-  if (aLevel < 0) or (aLevel >= fCollectionTypeList.Count) or (fCollectionTypeList[aLevel].CollectionSorting = newSorting) then
+  if (aLevel < 0) or (aLevel >= fCollectionConfigList.Count) or (fCollectionConfigList[aLevel].CollectionSorting = newSorting) then
     exit; // nothing to do
 
-  fCollectionTypeList.list[aLevel].CollectionSorting := newSorting;
-  //fCollectionTypeList.list[aLevel].Comparer := GetComparer(newSorting);
-
+  fCollectionConfigList.list[aLevel].CollectionSorting := newSorting;
   SortCollectionLevel(aLevel)
 end;
 
 procedure TRootCollection.RemoveAudioFile(aAudioFile: TAudioFile);
 var
   leafCollection: TAudioFileCollection;
+  i: Integer;
 begin
-  // get the Collection that (should) contain the AudioFile
-  leafCollection := SearchAudioFile(aAudioFile, True);
-  if not assigned(leafCollection) then
-    exit;
-  // removes the AudioFile from the leafCollection.fFilelist and decreases the Counter (also in all ParentCollections)
-  leafCollection.RemoveAudioFile(aAudioFile);
+  if fChildContent = ccTagCloud then begin
+    // the File could be everywhere, and in multiple collections
+    fFileList.Remove(aAudioFile);
+    fCount := fFileList.Count;
+    for i := 0 to CollectionCount - 1 do
+      TAudioFileCollection(Collection[i]).RemoveAudioFileFromTagCloud(aAudioFile);
+  end else
+  begin
+    // get the Collection that (should) contain the AudioFile
+    leafCollection := SearchAudioFile(aAudioFile, True);
+    if not assigned(leafCollection) then
+      exit;
+    // removes the AudioFile from the leafCollection.fFilelist and decreases the Counter (also in all ParentCollections)
+    leafCollection.RemoveAudioFile(aAudioFile);
+  end;
+end;
+
+function TRootCollection.RelocateAudioFile(aAudioFile: TAudioFile): Boolean;
+begin
+  if fChildContent = ccTagCloud then begin
+    result := True;
+    RemoveAudioFile(aAudioFile);
+    AddAudioFile(aAudioFile);
+  end else
+  begin
+    result := inherited RelocateAudioFile(AAudioFile);
+  end;
 end;
 
 
@@ -1976,15 +1990,15 @@ var
   aDrive: TDrive;
   somethingChanged: Boolean;
 begin
-  if fSubCollectionType <> ctDirectory then
+  if fChildContent <> ccDirectory then
     exit; // nothing to do
 
   somethingChanged := False;
-  for i := 0 to self.fSubCollectionList.Count - 1 do begin
-    if fSubCollectionList[i].Key[1] <> '\' then begin
-      aDrive := DriveManager.GetManagedDriveByOldChar(fSubCollectionList[i].Key[1]);
-      if assigned(aDrive) and (aDrive.Drive <> '') and (aDrive.Drive[1] <> fSubCollectionList[i].Key[1]) then begin
-        fSubCollectionList[i].fKey[1] := aDrive.Drive[1];
+  for i := 0 to self.fCollectionList.Count - 1 do begin
+    if fCollectionList[i].Key[1] <> '\' then begin
+      aDrive := DriveManager.GetManagedDriveByOldChar(fCollectionList[i].Key[1]);
+      if assigned(aDrive) and (aDrive.Drive <> '') and (aDrive.Drive[1] <> fCollectionList[i].Key[1]) then begin
+        fCollectionList[i].fKey[1] := aDrive.Drive[1];
         somethingChanged := True;
       end;
     end;
@@ -1993,9 +2007,9 @@ begin
   if somethingChanged then begin
     if fInsertMode = imDictionary then begin
       // refill the Dictionary, as the keys have changed
-      fSubCollectionDict.Clear;
-      for i := 0 to fSubCollectionList.Count - 1 do
-        fSubCollectionDict.Add(fSubCollectionList[i].fKey, fSubCollectionList[i]);
+      fCollectionDict.Clear;
+      for i := 0 to fCollectionList.Count - 1 do
+        fCollectionDict.Add(fCollectionList[i].fKey, fCollectionList[i]);
     end;
   end;
 end;
@@ -2069,17 +2083,17 @@ end;
 
 procedure TLibraryFileCategory.RememberLastCollection(aCollection: TAudioCollection);
 var
-  ac: TAudioCollection;
   afc: TAudioFileCollection;
 begin
-  fLastSelectedCollectionData.Clear;
+  fLastSelectedCollectionData[fBrowseMode].Clear;
 
   afc := TAudioFileCollection(aCollection);
-  fLastSelectedCollectionData.RootIndex := fCollections.IndexOf(afc.fRootCollection);
+  fLastSelectedCollectionData[fBrowseMode].RootIndex := fCollections.IndexOf(afc.fRoot);
+  fLastSelectedCollectionData[fBrowseMode].Expanded := afc.CollectionCount > 0;
 
-  while assigned(afc.fParentCollection) do begin
-    fLastSelectedCollectionData.AddKey(afc.Key);
-    afc := afc.fParentCollection;
+  while assigned(afc.fParent) do begin
+    fLastSelectedCollectionData[fBrowseMode].AddKey(afc.Key);
+    afc := afc.fParent;
   end;
 end;
 
@@ -2089,18 +2103,75 @@ var
   i: Integer;
 begin
   result := Nil;
-  if (fLastSelectedCollectionData.RootIndex > -1)
-     and (fLastSelectedCollectionData.RootIndex < fCollections.Count)
+  if (fLastSelectedCollectionData[fBrowseMode].RootIndex > -1)
+     and (fLastSelectedCollectionData[fBrowseMode].RootIndex < fCollections.Count)
   then begin
     // result: RootCollection
-    resultColl := TAudioFileCollection(fCollections[fLastSelectedCollectionData.RootIndex]);
+    resultColl := TAudioFileCollection(fCollections[fLastSelectedCollectionData[fBrowseMode].RootIndex]);
 
-    for i := fLastSelectedCollectionData.KeyCount - 1 downto 0 do begin
-      subColl := resultColl.GetSubCollectionByKey(fLastSelectedCollectionData.Keys[i]);
+    for i := fLastSelectedCollectionData[fBrowseMode].KeyCount - 1 downto 0 do begin
+      subColl := resultColl.GetCollectionByKey(fLastSelectedCollectionData[fBrowseMode].Keys[i]);
       if assigned(subColl) then
         resultColl := subColl
-      else
-        break;
+      else begin
+        if resultColl.Content = ccTagCloud then begin
+          // if i > 0 then
+            resultColl.ExpandTagCloud(True);
+          subColl := resultColl.GetCollectionByKey(fLastSelectedCollectionData[fBrowseMode].Keys[i]);
+          if assigned(subColl) then
+            resultColl := subColl
+          else
+            break;
+        end else
+          break;
+      end;
+    end;
+
+    result := resultColl;
+  end;
+end;
+
+function TLibraryFileCategory.FindLastCollectionAgainTagCloud(var LastKeyFound,
+  ExpandLastKey: Boolean): TAudioCollection;
+var
+  subColl, resultColl: TAudioFileCollection;
+  i: Integer;
+begin
+  result := Nil;
+  LastKeyFound := True; // think positive here
+  ExpandLastKey := fLastSelectedCollectionData[fBrowseMode].Expanded;
+  if (fLastSelectedCollectionData[fBrowseMode].RootIndex > -1)
+     and (fLastSelectedCollectionData[fBrowseMode].RootIndex < fCollections.Count)
+  then begin
+    resultColl := TAudioFileCollection(fCollections[fLastSelectedCollectionData[fBrowseMode].RootIndex]);
+    // = one of the RootCollections
+
+    // The keys are stored Bottom->Top in the CollectionData: Start with the last one
+    for i := fLastSelectedCollectionData[fBrowseMode].KeyCount - 1 downto 0 do begin
+
+
+      subColl := resultColl.GetCollectionByKey(fLastSelectedCollectionData[fBrowseMode].Keys[i]);
+      if assigned(subColl) then
+        resultColl := subColl
+      else begin
+        // A Collection with this Key doessn't exist (yet)
+        // In TagClouds: Expand the Cloud by one Layer and search again for the Key
+        if resultColl.Content = ccTagCloud then begin
+          resultColl.ExpandTagCloud;
+          subColl := resultColl.GetCollectionByKey(fLastSelectedCollectionData[fBrowseMode].Keys[i]);
+          if assigned(subColl) then
+            resultColl := subColl
+          else begin
+            LastKeyFound := False;
+            ExpandLastKey := True;
+            break;
+          end;
+        end else begin
+          // Not in TagCloud-Mode
+          LastKeyFound := False;
+          break;
+        end;
+      end;
     end;
 
     result := resultColl;
@@ -2108,29 +2179,10 @@ begin
 end;
 
 
-{procedure TLibraryFileCategory.Reset;
-var
-  i: Integer;
-begin
-  Clear;
-  for i := fCollections.Count-1 downto 0 do
-    fCollections.Delete(i);
-end;}
-
-(*function TLibraryFileCategory.AddRootCollection: TRootCollection;
-var
-  newCollection: TRootCollection;
-begin
-  newCollection := TRootCollection.Create;
-  fCollections.Add(newCollection);
-  result := newCollection;
-end;*)
-
 function TLibraryFileCategory.AddRootCollection(
-  const Properties: Array of teCollectionType; const Sortings: Array of teCollectionSorting): TRootCollection;
+  const Properties: Array of teCollectionContent; const Sortings: Array of teCollectionSorting): TRootCollection;
 var
   i, maxSort: Integer;
-
   newRoot: TRootCollection;
 begin
   newRoot := TRootCollection.Create(self);
@@ -2147,13 +2199,13 @@ begin
 end;
 
 function TLibraryFileCategory.AddRootCollection(
-  aRootConfig: TCollectionTypeList): TRootCollection;
+  aRootConfig: TCollectionConfigList): TRootCollection;
 var
   i: Integer;
 begin
   result := TRootCollection.Create(self);
   for i := 0 to aRootConfig.Count - 1 do begin
-    result.AddSubCollectionType(aRootConfig[i].CollectionType, aRootConfig[i].CollectionSorting);
+    result.AddSubCollectionType(aRootConfig[i].CollectionContent, aRootConfig[i].CollectionSorting);
   end;
 
   fCollections.Add(result);
@@ -2163,9 +2215,7 @@ initialization
 
 fLibraryFormatSettings := TFormatSettings.Create;
 
-//KeyCache.RawAlbum := '';
 KeyCache.RawDirectory := '';
-// KeyCache.ProcessedAlbum := '';
 KeyCache.ProcessedDirectory := '';
 
 (*

@@ -20,9 +20,10 @@ type
     cbSortings: TComboBox;
     procedure FormShow(Sender: TObject);
     procedure cbPropertiesChange(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     { Private declarations }
-    function GetCollectionType: teCollectionType;
+    function GetCollectionType: teCollectionContent;
     function GetSortingType: teCollectionSorting;
 
     procedure SetEdit(Value: Boolean);
@@ -30,14 +31,14 @@ type
 
   public
     { Public declarations }
-    property CollectionType: teCollectionType read GetCollectionType;
+    property CollectionType: teCollectionContent read GetCollectionType;
     property SortingType: teCollectionSorting read GetSortingType;
     property EditValue: Boolean write SetEdit;
 
-    procedure FillPropertiesSelection(IsRoot: Boolean);
-    procedure FillSortingsSelection(aCollectionType: teCollectionType);
+    procedure FillPropertiesSelection(AllowSpecialContent: Boolean);
+    procedure FillSortingsSelection(aCollectionType: teCollectionContent);
 
-    procedure SetDefaultValues(aType: teCollectionType; aSorting: teCollectionSorting);
+    procedure SetDefaultValues(aType: teCollectionContent; aSorting: teCollectionSorting);
   end;
 
 var
@@ -51,7 +52,21 @@ resourcestring
 
 implementation
 
+uses gnugettext, Hilfsfunktionen;
+
 {$R *.dfm}
+
+procedure TFormNewLayer.FormCreate(Sender: TObject);
+begin
+  BackUpComboBoxes(self);
+  TranslateComponent (self);
+  RestoreComboboxes(self);
+end;
+
+procedure TFormNewLayer.FormShow(Sender: TObject);
+begin
+//
+end;
 
 procedure TFormNewLayer.cbPropertiesChange(Sender: TObject);
 begin
@@ -59,32 +74,34 @@ begin
     FillSortingsSelection(self.CollectionType);
 end;
 
-procedure TFormNewLayer.FillPropertiesSelection(IsRoot: Boolean);
+procedure TFormNewLayer.FillPropertiesSelection(AllowSpecialContent: Boolean);
 begin
   cbProperties.Clear;
 
-  cbProperties.Items.AddObject(TreeHeader_Artists, TObject(ctArtist));
-  cbProperties.Items.AddObject(TreeHeader_Albums, TObject(ctAlbum));
-  if IsRoot then
-    cbProperties.Items.AddObject(TreeHeader_Directories, TObject(ctDirectory));
-  cbProperties.Items.AddObject(TreeHeader_Genres, TObject(ctGenre));
-  cbProperties.Items.AddObject(TreeHeader_Decades, TObject(ctDecade));
-  cbProperties.Items.AddObject(TreeHeader_Years, TObject(ctYear));
-  cbProperties.Items.AddObject(TreeHeader_FileAges, TObject(ctFileAgeYear));
-  cbProperties.Items.AddObject(TreeHeader_FileAgesMonth, TObject(ctFileAgeMonth));
+  cbProperties.Items.AddObject(TreeHeader_Artists, TObject(ccArtist));
+  cbProperties.Items.AddObject(TreeHeader_Albums, TObject(ccAlbum));
+  if AllowSpecialContent then begin
+    cbProperties.Items.AddObject(TreeHeader_Directories, TObject(ccDirectory));
+    cbProperties.Items.AddObject('TagCloud', TObject(ccTagCloud));
+  end;
+  cbProperties.Items.AddObject(TreeHeader_Genres, TObject(ccGenre));
+  cbProperties.Items.AddObject(TreeHeader_Decades, TObject(ccDecade));
+  cbProperties.Items.AddObject(TreeHeader_Years, TObject(ccYear));
+  cbProperties.Items.AddObject(TreeHeader_FileAges, TObject(ccFileAgeYear));
+  cbProperties.Items.AddObject(TreeHeader_FileAgesMonth, TObject(ccFileAgeMonth));
 
   cbProperties.ItemIndex := 0;
   FillSortingsSelection(self.CollectionType);
 end;
 
-procedure TFormNewLayer.FillSortingsSelection(aCollectionType: teCollectionType);
+procedure TFormNewLayer.FillSortingsSelection(aCollectionType: teCollectionContent);
 begin
   cbSortings.Clear;
   cbSortings.Items.AddObject( CollectionSortingNames[csDefault], TObject(csDefault));
 
   case aCollectionType of
 
-    ctAlbum: begin
+    ccAlbum: begin
       cbSortings.Items.AddObject(CollectionSortingNames[csAlbum], TObject(csAlbum));
       cbSortings.Items.AddObject(CollectionSortingNames[csArtistAlbum], TObject(csArtistAlbum));
       cbSortings.Items.AddObject(CollectionSortingNames[csGenre], TObject(csGenre));
@@ -92,26 +109,26 @@ begin
       cbSortings.Items.AddObject(CollectionSortingNames[csFileAge], TObject(csFileAge));
       cbSortings.Items.AddObject(CollectionSortingNames[csDirectory], TObject(csDirectory));
     end;
-    ctDirectory: begin
+    ccDirectory: begin
       cbSortings.Items.AddObject( CollectionSortingNames[csFileAge], TObject(csFileAge));
     end;
-    ctNone: ;
-    ctRoot: ;
-    ctArtist: ;
-    ctGenre: ;
-    ctDecade: ;
-    ctYear: ;
-    ctFileAgeYear: ;
-    ctFileAgeMonth: ;
-    ctPath: ;
-    ctCoverID: ;
+    ccNone: ;
+    ccRoot: ;
+    ccArtist: ;
+    ccGenre: ;
+    ccDecade: ;
+    ccYear: ;
+    ccFileAgeYear: ;
+    ccFileAgeMonth: ;
+    ccPath: ;
+    ccCoverID: ;
   end;
 
   cbSortings.Items.AddObject( CollectionSortingNames[csCount], TObject(csCount));
   cbSortings.ItemIndex := 0;
 end;
 
-procedure TFormNewLayer.SetDefaultValues(aType: teCollectionType; aSorting: teCollectionSorting);
+procedure TFormNewLayer.SetDefaultValues(aType: teCollectionContent; aSorting: teCollectionSorting);
 var
   propIdx, sortIdx: Integer;
 begin
@@ -138,14 +155,10 @@ begin
   end;
 end;
 
-procedure TFormNewLayer.FormShow(Sender: TObject);
-begin
-//
-end;
 
-function TFormNewLayer.GetCollectionType: teCollectionType;
+function TFormNewLayer.GetCollectionType: teCollectionContent;
 begin
-  result := teCollectionType(cbProperties.Items.Objects[cbProperties.ItemIndex]);
+  result := teCollectionContent(cbProperties.Items.Objects[cbProperties.ItemIndex]);
 end;
 
 function TFormNewLayer.GetSortingType: teCollectionSorting;

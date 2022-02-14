@@ -567,7 +567,6 @@ const
 
 
     //MAX_DRAGFILECOUNT = 2500; Now: NempOptions.maxDragFileCount
-    MIN_CUESHEET_DURATION = 600; // no automatic scanning for cue sheets for short tracks
 
     // Messages des Players
     //---------------------------------------
@@ -630,7 +629,9 @@ const
     MB_CheckAnzeigeList = 6;
     // Anzeigeliste neu füllen
     MB_ReFillAnzeigeList = 7;
+    MB_ImportFavoritePlaylists = 9;
 
+    MB_LoadLastSelectionData = 10;
     // Dateigefunden
     //MB_NewFile = 8;
     //MB_ProgressSearch = 9;
@@ -694,7 +695,7 @@ const
     MB_RefreshTagCloudFile = 31;
 
     // Set TabWarning for TagCloud after getting Tags
-    MB_TagsSetTabWarning = 32;
+    MB_TagsSetFinished = 32;
 
     // An error occured in a Thread: Log Message
     MB_ErrorLog = 33;

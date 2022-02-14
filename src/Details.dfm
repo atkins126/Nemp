@@ -1132,6 +1132,8 @@ object FDetails: TFDetails
           Anchors = [akLeft, akTop, akBottom]
           BorderStyle = bsNone
           BorderWidth = 1
+          Colors.UnfocusedSelectionColor = clHighlight
+          Colors.UnfocusedSelectionBorderColor = clHighlight
           Header.AutoSizeIndex = 0
           Header.MainColumn = 3
           Header.Options = [hoColumnResize, hoDrag, hoVisible]
