@@ -350,6 +350,10 @@ type
 
         procedure MergeFilesIntoPathList(aUpdateList: TAudioFileList);
         procedure DeleteFilesFromPathList(missingFiles: TAudioFileList);
+        procedure DeleteFilesFromOtherLists(missingFiles: TAudioFileList);
+        procedure DeletePlaylists(MissingPlaylists: TLibraryPlaylistList);
+
+
         procedure MergeFileIntoCategories(aFileList: TAudioFileList);
         procedure MergePlaylistsIntoCategories(aPlaylistList: TLibraryPlaylistList);
         procedure MergeWebradioIntoCategories(aStationList: TObjectList);
@@ -623,7 +627,14 @@ type
         Procedure ReBuildBrowseLists;     // Complete Rebuild
         procedure ReFillFileCategories;
         procedure FillRootCollection(Dest: TRootCollection; SourceCategory: TLibraryCategory);
+
+        // On DragOver: Get the proper Name for the target category for the DragOver-Hint.
+        // Consider the case when lc is the "Recently Added"-Category
+        function GetTargetFileCategoryName(lc: TLibraryCategory; out CatCount: Integer): String;
+        // On Drop: Init the Target Category(Categories)
+        // Consider Categories "Default" and "Recently Added"
         procedure InitTargetCategory(lc: TLibraryCategory);
+
         //procedure ReBuildCoverList(FromScratch: Boolean = True);       // -"- of CoverLists
         procedure ChangeCategory(Current, Target: TLibraryCategory; Files: TAudioFileList; Action: teCategoryAction);
 
@@ -636,7 +647,9 @@ type
         procedure DeleteEmptyFileCollections;
         procedure RefreshCollections(FullRefill: Boolean = True);
 
-        procedure ChangeFileCollectionSorting(RCIndex, Layer: Integer; newSorting: teCollectionSorting);
+        procedure ChangeFileCollectionSorting(RCIndex, Layer: Integer; newSorting: teCollectionSorting;
+          newDirection: teSortDirection; OnlyDirection: Boolean);
+        procedure ChangePlaylistCollectionSorting(newSorting: tePlaylistCollectionSorting; newDirection: teSortDirection);
 
         function SearchStringIsDirty(EditedColumn: Integer): Boolean;
         function CollectionsAreDirty(EditedColumn: Integer): Boolean; overload;
@@ -686,6 +699,7 @@ type
 
         // Sorting the Lists
         procedure AddSorter(TreeHeaderColumnTag: Integer; FlipSame: Boolean = True);
+        procedure ChangeSortDirection(NewDirection: teSortDirection);
         procedure SortAnzeigeListe;
 
         // Generating RandomList (Random Playlist)
@@ -2302,8 +2316,13 @@ begin
   SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressShowHint, Integer(PChar(DeleteSelect_DeletingFiles)));
 
   DeadFiles.Sort(Sort_Pfad_asc);
+
   DeleteFilesFromPathList(DeadFiles);
-  AntiMergePlaylists(AllPlaylistsPfadSort, DeadPlaylists);
+  DeleteFilesFromOtherLists(DeadFiles);
+  DeletePlaylists(DeadPlaylists)
+  //AntiMergePlaylists(AllPlaylistsPfadSort, DeadPlaylists);
+
+
 
   (*    fhfghfgh
 
@@ -3617,7 +3636,7 @@ end;
 
 
 procedure TMedienBibliothek.ChangeFileCollectionSorting(RCIndex, Layer: Integer;
-  newSorting: teCollectionSorting);
+  newSorting: teCollectionSorting; newDirection: teSortDirection; OnlyDirection: Boolean);
 var
   iCat: Integer;
   rc: TRootCollection;
@@ -3625,8 +3644,8 @@ var
 begin
   // Change Sorting in the Library-Configuration
   case self.BrowseMode of
-    0: NempOrganizerSettings.ChangeFileCollectionSorting(RCIndex, Layer, newSorting);
-    1: NempOrganizerSettings.ChangeCoverFlowSorting(newSorting);
+    0: NempOrganizerSettings.ChangeFileCollectionSorting(RCIndex, Layer, newSorting, newDirection, OnlyDirection);
+    1: NempOrganizerSettings.ChangeCoverFlowSorting(newSorting, newDirection, OnlyDirection);
   end;
 
 
@@ -3639,11 +3658,11 @@ begin
 
       case rc.SpecialContent of
         scRegular: begin
-          rc.ChangeSubCollectionSorting(Layer, newSorting);
+          rc.ChangeSubCollectionSorting(Layer, newSorting, newDirection, OnlyDirection);
           rc.SortCollectionLevel(Layer, True);
         end;
-        scDirectory: rc.ReSortDirectoryCollection(newSorting, True);
-        scTagCloud: rc.ReSortTagCloudCollection(newSorting, True);
+        scDirectory: rc.ReSortDirectoryCollection(newSorting, newDirection, OnlyDirection, True);
+        scTagCloud: rc.ReSortTagCloudCollection(newSorting, newDirection, OnlyDirection, True);
       end;
 
 
@@ -3658,6 +3677,17 @@ begin
       end;}
     end;
   end;
+end;
+
+procedure TMedienBibliothek.ChangePlaylistCollectionSorting(newSorting: tePlaylistCollectionSorting;
+          newDirection: teSortDirection);
+var
+  catIdx: Integer;
+begin
+  NempOrganizerSettings.PlaylistSorting := newSorting;
+  NempOrganizerSettings.PlaylistSortDirection := newDirection;
+  for catIdx := 0 to PlaylistCategories.Count - 1 do
+    TLibraryPlaylistCategory(PlaylistCategories[catIdx]).Sort(newSorting, newDirection);
 end;
 
 {
@@ -4355,6 +4385,7 @@ begin
         CON_ALBUMGAIN           : NewSortMethod := AFCompareAlbumGain;
         CON_TRACKPEAK           : NewSortMethod := AFCompareTrackPeak;
         CON_ALBUMPEAK           : NewSortMethod := AFCompareAlbumPeak;
+        CON_BPM                 : NewSortMethod := AFCompareBPM;
     else
         NewSortMethod := AFComparePath;
     end;
@@ -4380,8 +4411,15 @@ begin
         Sortparams[0].Direction := sd_Ascending;
         Sortparams[0].Tag := TreeHeaderColumnTag;
     end;
-
 end;
+
+procedure TMedienBibliothek.ChangeSortDirection(NewDirection: teSortDirection);
+begin
+  SortParams[0].Direction := NewDirection;
+  SortParams[1].Direction := NewDirection;
+  SortParams[2].Direction := NewDirection;
+end;
+
 procedure TMedienBibliothek.AddStartJob(aJobtype: TJobType; aJobParam: String);
 var newJob: TStartJob;
 begin
@@ -4552,6 +4590,8 @@ begin
       rprLibrary,
       rprCategory: SourceList := Mp3ListePfadSort;
       rprView: SourceList := AnzeigeListe;
+    else
+      SourceList := Mp3ListePfadSort;
     end;
 
 
@@ -5764,6 +5804,7 @@ var
   i, CatIdx: Integer;
   CheckCat: Boolean;
 begin
+  CatIdx := 0;
   CheckCat := assigned(SourceCategory);
   if CheckCat then begin
     if SourceCategory.CategoryType = ccFiles then
@@ -5794,6 +5835,10 @@ begin
   InitFileCategories;
   MergeFileIntoCategories(Mp3ListePfadSort);
   MergePlaylistsIntoCategories(AllPlaylistsPfadSort);
+
+  if assigned(FavoritePlaylistCategory) and (FavoritePlaylistCategory.CollectionCount = 0) then
+    MergeNempDefaultPlaylists;
+
   // SendMessage(MainWindowHandle, WM_MedienBib, MB_RefillTrees, 0);
 end;
 
@@ -5820,17 +5865,52 @@ begin
   end;
 end;
 
+function TMedienBibliothek.GetTargetFileCategoryName(lc: TLibraryCategory; out CatCount: Integer): String;
+begin
+  CatCount := 0;
+  if not assigned(lc) then
+    result := ''
+  else
+  if not (lc.CategoryType = ccFiles) then
+    result := '' // but this case should not occur
+  else
+  begin
+    inc(CatCount);
+    result := lc.Name;
+    // if the actual DropOver-Category is our "Recently Added"-Category, the dropped files
+    // should *also* be added into the Default-Category, if the setting "UseSmartAdd" is activated
+    if (lc.IsNew)
+      and assigned(DefaultFileCategory)
+      and (DefaultFileCategory <> lc)
+    then begin
+      result := result + ', ' + DefaultFileCategory.Name;
+      inc(CatCount);
+    end;
+
+    if (not lc.IsNew) and assigned(NewFilesCategory)
+    then begin
+      result := result + ', ' + NewFilesCategory.Name;
+      inc(CatCount);
+    end;
+  end;
+end;
+
 procedure TMedienBibliothek.InitTargetCategory(lc: TLibraryCategory);
 var
   CategoryMask: Cardinal;
 begin
   CategoryMask := 0;
-  if assigned(lc) and (lc.CategoryType = ccFiles) then
-    CategoryMask := 1 shl lc.Index
+  if assigned(lc) and (lc.CategoryType = ccFiles) then begin
+    CategoryMask := 1 shl lc.Index;
+    // Add DefaultCategory, if it makes sense
+    if lc.IsNew and assigned(DefaultFileCategory) then
+      CategoryMask := CategoryMask or (1 shl DefaultFileCategory.Index);
+  end
   else
     if assigned(DefaultFileCategory) then
       CategoryMask := 1 shl DefaultFileCategory.Index;
-  if  NempOrganizerSettings.UseNewCategory and assigned(NewFilesCategory) then
+  // Add "Recently Added"-Category if wanted
+  if assigned(NewFilesCategory) then
     CategoryMask := CategoryMask or (1 shl NewFilesCategory.Index);
 
   TargetCategory := Categorymask;
@@ -6352,6 +6432,41 @@ begin
   swapList.Free;
 end;
 
+procedure TMedienBibliothek.DeleteFilesFromOtherLists(missingFiles: TAudioFileList);
+var
+  i, iCat: Integer;
+begin
+  for i := 0 to missingFiles.Count - 1 do begin
+    // similar to DeleteAudioFile(), but
+    // - without Mp3ListePfadSort.Extract (this is done before more efficiently)
+    // - without check for "AnzeigeShowsPlaylistFiles" (we do have "real" files here)
+    // - no AudioFile.free (this is done later)
+    if missingFiles[i] = CurrentAudioFile then
+      currentAudioFile := Nil;
+
+    LastBrowseResultList      .Extract(missingFiles[i]);
+    LastQuickSearchResultList .Extract(missingFiles[i]);
+    LastMarkFilterList        .Extract(missingFiles[i]);
+
+    BibSearcher.RemoveAudioFileFromLists(missingFiles[i]);
+    // remove from all Categories
+    for iCat := 0 to FileCategories.Count - 1 do
+      TLibraryFileCategory(FileCategories[iCat]).RemoveAudioFile(missingFiles[i]);
+  end;
+end;
+
+procedure TMedienBibliothek.DeletePlaylists(MissingPlaylists: TLibraryPlaylistList);
+var
+  i, iCat: Integer;
+begin
+  // remove all Missing Playlists from the main list and all Categories
+  for i := 0 to MissingPlaylists.Count - 1 do begin
+    AllPlaylistsPfadSort.Remove(MissingPlaylists[i]);
+    for iCat := 0 to PlaylistCategories.Count - 1 do
+      TLibraryPlaylistCategory(PlaylistCategories[iCat]).RemovePlaylist(MissingPlaylists[i]);
+  end;
+end;
+
 procedure TMedienBibliothek.MergeFileIntoCategories(aFileList: TAudioFileList);
 var
   i, catIdx, actualCatIdx: Integer;
@@ -6405,7 +6520,10 @@ begin
 
   // todo: SortOrder einstellbar ... ?  Ggf. an CaptionMode koppeln?
   for catIdx := 0 to PlaylistCategories.Count - 1 do begin
-    TLibraryPlaylistCategory(PlaylistCategories[catIdx]).Sort(csAlbum);
+    // TLibraryPlaylistCategory(PlaylistCategories[catIdx]).Sort(csAlbum);
+    TLibraryPlaylistCategory(PlaylistCategories[catIdx]).Sort(
+        NempOrganizerSettings.PlaylistSorting,
+        NempOrganizerSettings.PlaylistSortDirection);
   end;
 end;
 

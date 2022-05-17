@@ -69,7 +69,7 @@ uses NempMainUnit, Nemp_ConstantsAndTypes, NempAPI, Details,
     Nemp_RessourceStrings, ShoutCastUtils, WebServerClass,
     UpdateUtils, SystemHelper, ScrobblerUtils, OptionsComplete,
     DriveRepairTools, ShutDown, Spectrum_Vis, PlayerClass, BirthdayShow,
-    SearchTool, MMSystem, BibHelper, CloudEditor,
+    SearchTool, MMSystem, BibHelper, CloudEditor, SplitForm_Hilfsfunktionen,
     DeleteSelect, GnuGetText, MedienbibliothekClass, PlayerLog,
     PostProcessorUtils, ProgressUnit, EffectsAndEqualizer,
     AudioDisplayUtils, System.Win.TaskbarCore;
@@ -906,7 +906,6 @@ begin
             if assigned(PlayerLogForm) then
                 PlayerLogForm.vstPlayerLog.Invalidate;
         end;
-
   end;
 end;
 
@@ -1718,14 +1717,12 @@ begin
     WM_PlayerStop, WM_PlayerPlay: begin
                                     BassTimer.Enabled := //NempPlayer.BassStatus = BASS_ACTIVE_PLAYING;
                                                          NempPlayer.Status = PLAYER_ISPLAYING;
-                                    if assigned(NempPlayer.MainAudioFile) then
-                                    begin
-                                        RecordBtn.Enabled
-                                        //RecordBtn.Visible
-                                         := NempPlayer.MainAudioFile.isStream
-                                                           and (NempPlayer.BassStatus = BASS_ACTIVE_PLAYING)
-                                                           and (NempPlayer.StreamType <> 'Ogg')
-                                    end;
+
+                                    RecordBtn.Enabled := assigned(NempPlayer.MainAudioFile)
+                                         and NempPlayer.MainAudioFile.isStream
+                                         and (NempPlayer.BassStatus = BASS_ACTIVE_PLAYING)
+                                         and (NempPlayer.StreamType <> 'Ogg');
+
                                     if  Message.Msg = WM_PlayerStop then
                                     begin
                                       // Set the SlideBtn to its initial position

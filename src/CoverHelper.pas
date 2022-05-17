@@ -643,12 +643,11 @@ begin
 
      // das true versaut es ggf. zumindest dann, wenn oben newID auf '' gesetzt wurde
 
-
     // if we found an image, but the ID has changed: Change it on the other files with that ID as well
     if (aAudioFile.CoverID <> oldID) then
     begin
-        if aAudioFile.CoverID = '' then
-          aAudioFile.CoverID := 'kaputt repaired';
+        //if aAudioFile.CoverID = '' then
+        //  aAudioFile.CoverID := 'kaputt repaired';
         MedienBib.ChangeCoverID(oldID, aAudioFile.CoverID);
         if  MedienBib.NewCoverFlow.CurrentCoverID = oldID then
             MedienBib.NewCoverFlow.CurrentCoverID := aAudioFile.CoverID;
@@ -1480,7 +1479,7 @@ begin
           GoodCoverList := TAudioCollectionList.Create(False);
           try
               // fill GoodCoverList with "good covers", i.e. a cover-bitmap exists
-              for i := 1 to RC.CollectionCount - 1 do  //SourceCoverList.Count - 1 do
+              for i := 0 to RC.CollectionCount - 1 do  //SourceCoverList.Count - 1 do
               begin
                   //if (SourceCoverlist[i].ID <> '')
                   //    and(SourceCoverlist[i].ID[1] <> '_')

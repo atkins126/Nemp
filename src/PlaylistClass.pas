@@ -372,7 +372,7 @@ type
 
 implementation
 
-uses NempMainUnit, spectrum_vis, BibSearchClass, StringHelper;
+uses NempMainUnit, spectrum_vis, BibSearchClass, StringHelper, LibraryOrganizer.Base, LibraryOrganizer.Files;
 
 var tid      : Cardinal;
 
@@ -1594,70 +1594,45 @@ begin
 end;
 
 function TNempPlaylist.SuggestSaveLocation(out Directory: String; out Filename: String): Boolean;
-var iMax, i: integer;
-    aDir, aAlbum, aArtist: String;
-    af: TAudioFile;
-    OKDir, OKArtist, OKAlbum: Boolean;
+var
+  i: integer;
+  afc: TAudioFileCollection;
+
 begin
     if count = 0 then
     begin
         Directory := '';
         Filename := '';
-        result := False
+        result := False;
     end
     else
     begin
-        if self.Count < 10 then
-            iMax := Count
+      afc := TAudioFileCollection.Create(nil, nil, 0, cmDefault);
+      try
+        afc.ChildContent := ccNone;
+        // Add all *Files* to the Collection ...
+        for i := 0 to Playlist.Count - 1 do
+          if Playlist[i].IsFile then
+            afc.AddAudioFile(Playlist[i]);
+        // ... and analyse it
+        afc.Analyse(False, True);
+        // Showmessage(afc.Artist + #13#10 + afc.Album  + #13#10 + afc.Directory)
+
+        Directory := afc.Directory;
+        result := Directory <> '';
+
+        if afc.Album <> ''  then
+          Filename := afc.Artist + ' - ' + afc.Album
         else
-            iMax := 10;
+          Filename := afc.Artist;
 
-        OKDir    := True;
-        OKArtist := True;
-        OKAlbum  := True;
-        af := Playlist[0];
-        aDir    := af.Ordner;
-        aAlbum  := af.Album;
-        aArtist := af.Artist;
-
-        for i := 1 to iMax-1 do
-        begin
-            af := Playlist[i];
-            if af.Ordner <> aDir then
-                OKDir := False;
-            if af.Artist <> aArtist then
-                OKArtist := False;
-            if af.Album <> aAlbum then
-                OKAlbum := False;
-        end;
-
-        if okDir then
-        begin
-            Directory := aDir;
-            result := True;
-        end
-        else
-            result := False;
-
-        if okAlbum then
-        begin
-            if OKArtist then
-                Filename := aArtist + ' - ' + aAlbum
-            else
-                Filename := 'VA - ' + aAlbum;
-        end else
-        begin
-            if OKArtist then
-                Filename := aArtist + ' - Mix'
-            else
-                Filename := '';
-        end;
-
-        // replace forbidden chars from the filename
         Filename := ConvertToFileName(Filename);
+      finally
+        afc.Free;
+      end;
     end;
-
 end;
+
 procedure TNempPlaylist.SaveToFile(aFilename: UnicodeString; Silent: Boolean = True);
 var
   myAList: tStringlist;
@@ -1680,7 +1655,9 @@ begin
               at_File: begin
                   myAList.add('#EXTINF:' + IntTostr(aAudiofile.Duration) + ','
                       + aAudioFile.Artist + ' - ' + aAudioFile.Titel);
-                  myAList.Add(ExtractRelativePathNew(aFilename, aAudioFile.Pfad ));
+                  // myAList.Add(ExtractRelativePathNew(aFilename, aAudioFile.Pfad ));
+                  myAList.Add(ExtractRelativePath(aFilename, aAudioFile.Pfad ));
+
               end;
               at_Stream: begin
                   myAList.add('#EXTINF:' + '0,' + aAudioFile.Description);
@@ -1718,7 +1695,8 @@ begin
               aAudiofile := Playlist[i-1] as TPlaylistfile;
               case aAudioFile.AudioType of
                   at_File: begin
-                      ini.WriteString ('playlist', 'File'  + IntToStr(i), ExtractRelativePathNew(aFilename, aAudioFile.Pfad ));
+                      //ini.WriteString ('playlist', 'File'  + IntToStr(i), ExtractRelativePathNew(aFilename, aAudioFile.Pfad ));
+                      ini.WriteString ('playlist', 'File'  + IntToStr(i), ExtractRelativePath(aFilename, aAudioFile.Pfad ));
                       ini.WriteString ('playlist', 'Title' + IntToStr(i), aAudioFile.Artist + ' - ' + aAudioFile.Titel);
                       ini.WriteInteger('playlist', 'Length'+ IntToStr(i), aAudioFile.Duration);
                   end;

@@ -159,7 +159,8 @@ Warning_MedienBibIsBusyOnClose = 'Nemp is searching for new files or updating th
 Warning_MedienBibIsBusyCritical = 'The library is in a critical update-process right now. Editing files is not possible. Please try again in a few seconds.';
 Warning_MedienBibIsBusy_Options
            = 'Some settings could not be changed, because the media library is busy. Please try again later or cancel the running operation by pressing ESC.';
-
+Warning_MedienBibIsBusy_Config
+           = 'The configuration could not be changed, because the media library is busy. Please try again later or cancel the running operation by pressing ESC.';
 Warning_MedienBibIsBusyRating = 'The media library is busy at the moment, so your rating could not be set there. (If the current file is not in your library at all, you can ignore this message.)';
 Warning_MedienBibIsBusyEdit = 'The media library is busy at the moment, so your input could not be saved. Please try again in a few seconds.';
 Warning_MedienBibBusyThread = 'The library blocked this very file by an automated background-process right now. Please try again in a few seconds.'  + #13#10
@@ -269,6 +270,7 @@ FloatingPointChannels_Off = 'Current status: Off';
 
     OptionsTree_FilesMain         = 'File management';
     OptionsTree_FilesCover        = 'Cover & Lyrics';
+    OptionsTree_Categories        = 'Media Library: Categories';
 
 
     OptionsTree_ExtendedMain      = 'Extended settings';
@@ -1098,7 +1100,15 @@ Playlist_SearchingNewFilesComplete = 'Searching for music files completed. The n
 HTTP_Connection_Error = 'Error connecting %s: %s';
 
 FormBuilder_SeparateWindowWarning = 'The form layout cannot be applied in separate window mode.';
-
+FormBuilder_MainContainerCaption = 'Click %s and %s to split the window into multiple panes.' + #13#10 + 'Then drag and drop the 7 Nemp GUI-Elements to those panes.';
+FormBuilder_ElementCount = 'Please create %d more pane(s) so you can place all GUI-Elements on the form.';
+FormBuilder_ElementCountComplete = 'Now Drag and Drop the above GUI-Elements to the panes you''ve created.';
+FormBuilder_ElementCountTooMany = 'You''ve created too many panes. Please delete some of them.';
+FormBuilder_ConstructionComplete = 'Construction complete. Click "Apply" to test this setup in the real Nemp window.';
+FormBuilder_PresetInstructionsInvalid = 'The selected Layout Configuration seems to be invalid. Loading default configuration instead.';
+FormBuilder_PresetInstructionsMissing = 'The selected Layout Configuration could not be found.';
+FormBuilder_LoadPresetHint = 'Load a predefined Form Layout';
+FormBuilder_ConstructionFormShow = 'Use the buttons to remove some elements and to create a new partition. Then use Drag&Drop to assign the GUI-Elements again.';
 
 PlaylistManagerAutoSave_Caption = 'Confirmation';
 PlaylistManagerAutoSave_Text    = 'The current playlist "%s" has been changed since it has been saved.' +#13#10 + #13#10
@@ -1156,17 +1166,33 @@ DragDropLibrary = 'Add to Media Library';
 DragDropHintTargetPlaylistOrCategory = 'Drop the files into the Playlist or another Category.';
 DragDropHintTargetPlaylist = 'Drop the files into the Playlist.';
 DragDropLibraryInternFailCategory = 'You can''t add files into this category';
+//DragDropLibraryCategory = 'Add to Media Library, category %1';
+DragDropLibraryCategory = 'Add to category %1';
+DragDropLibraryCategories = 'Add to categories %1';
 
-DragDropLibraryCategory = 'Add to Media Library, category %1';
 DragDropPlaylistAdd = 'Add to Playlist here';
 DragDropPlaylistMove = 'Move here';
 DragDropPlaylistCopy = 'Copy here';
 DragDropPlayerMain = 'Play Now';
 DragDropPlayerHeadset = 'Play in Headset';
 
+CategoryRecentlyAddedEmpty = '(No category selected)';
+
 ChangeCategoryForm_CurrentCategory = 'Current category: "%s"';
 ChangeCategoryForm_MoreFiles = '... and %d more';
 ChangeCategoryForm_AffectedFiles = 'Affected files: %d';
+
+WriteAccessNotPossibleUserPath = 'Nemp can''t write into the Users appdata path and therefore can''t save any data (including settings, playlist and the media library). This is quite unusual. '
+  + #13#10
+  + #13#10 + 'You may try Nemp using in "portable mode".'
+  + #13#10
+  + #13#10 + 'Please refer to the documentation for further details.';
+
+WriteAccessNotPossiblePortable = 'Nemp can''t write into the current directory and therefore can''t save any data (including settings, playlist and the media library). '
+  + #13#10
+  + #13#10 + 'You may try Nemp using in "installed mode" by deleting the file "UseLocalData.cfg". Otherwise, you should move Nemp into your "portable apps" directory.'
+  + #13#10
+  + #13#10 + 'Please refer to the documentation for further details.';
 
 implementation
 

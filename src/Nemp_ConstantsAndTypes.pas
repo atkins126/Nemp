@@ -109,7 +109,7 @@ type
         fLeft,
         fWidth,
         fHeight  : Integer;
-        fDocked,
+        fDocked: Boolean;
         fVisible: Boolean;
 
       public
@@ -168,7 +168,7 @@ type
 
         public
             property Block   : TPanel read fBlock  ;
-            property Header  : TPanel read fHeader ;
+            //property Header  : TPanel read fHeader ;
             property Content : TPanel read fContent;
             property Name    : String read fName   ;
 
@@ -735,7 +735,6 @@ const
 
     MB_SetStatus = 100;
 
-
     // Konstanten für den Status der Bib:
     BIB_Status_Free = 0;
     BIB_Status_UpdateStart = 1;
@@ -766,7 +765,7 @@ const
 
     // WM_TRAYMSG = WM_USER + 10; // not needed any more (tTrayIcon)
 
-    Spaltenzahl = 28;
+    Spaltenzahl = 29;
     // Nicht Ändern! Das sind auch die Tags in den Menu-Einträgen zum Sortieren!!
     CON_ARTIST    = 0 ;
     CON_TITEL     = 1 ;
@@ -797,6 +796,7 @@ const
     CON_ALBUMGAIN = 25;
     CON_TRACKPEAK = 26;
     CON_ALBUMPEAK = 27;
+    CON_BPM = 28;
 
     //-----
     CON_EX_ARTISTALBUMTITEL = 117;
@@ -921,7 +921,7 @@ const
          'Techno'
          );
 
-      DefaultSpalten : array[0..27] of TSpalte =
+      DefaultSpalten : array[0..28] of TSpalte =
       (
         (Bezeichnung: 'Artist' ;Inhalt: CON_ARTIST        ;visible: True  ;width: 122 ;sortAscending: True),
         (Bezeichnung: 'Title' ;Inhalt: CON_TITEL          ;visible: True  ;width: 190 ;sortAscending: True),
@@ -952,7 +952,8 @@ const
         (Bezeichnung: 'Track gain' ;Inhalt: CON_TRACKGAIN       ;visible: false   ;width: 70 ;sortAscending: True),
         (Bezeichnung: 'Album gain' ;Inhalt: CON_ALBUMGAIN       ;visible: false   ;width: 70 ;sortAscending: True),
         (Bezeichnung: 'Track peak' ;Inhalt: CON_TRACKPEAK       ;visible: false   ;width: 70 ;sortAscending: True),
-        (Bezeichnung: 'Album peak' ;Inhalt: CON_ALBUMPEAK       ;visible: false   ;width: 70 ;sortAscending: True)
+        (Bezeichnung: 'Album peak' ;Inhalt: CON_ALBUMPEAK       ;visible: false   ;width: 70 ;sortAscending: True),
+        (Bezeichnung: 'BPM'        ;Inhalt: CON_BPM             ;visible: false   ;width: 70 ;sortAscending: True)
       );
 
       AUDIOFILE_STRINGS : Array[0..4] of string =
@@ -996,7 +997,6 @@ const
       VORBIS_PLAYCOUNT = 'PLAYCOUNT';
       VORBIS_CATEGORIES = 'CATEGORIES';
       VORBIS_DISCNUMBER = 'DISCNUMBER';
-
       VORBIS_USERCOVERID = 'NEMP_COVER_ID';
       //VORBIS_FAVORITE = 'FAVORITE';
 
@@ -1009,6 +1009,8 @@ const
       APE_USERCOVERID = 'NEMP_COVER_ID';
       //APE_FAVORITE = 'FAVORITE';
 
+      TRACK_BPM = 'BPM';
+
       REPLAYGAIN_TRACK_GAIN = 'REPLAYGAIN_TRACK_GAIN';
       REPLAYGAIN_ALBUM_GAIN = 'REPLAYGAIN_ALBUM_GAIN';
 
@@ -1019,10 +1021,10 @@ const
 function GetDefaultEqualizerIndex(aEQSettingsName: String): Integer;
 
 function NempOptions: TNempOptions;
-function NempFormBuildOptions: TNempFormBuildOptions;
+// function NempFormBuildOptions: TNempFormBuildOptions;
 function NempSettingsManager: TNempSettingsManager;
 
-function Assigned_NempFormBuildOptions: Boolean;
+//function Assigned_NempFormBuildOptions: Boolean;
 
 
 implementation
@@ -1033,10 +1035,10 @@ var fNempOptions: TNempOptions;
     fNempSettingsManager: TNempSettingsManager;
     fNempFormBuildOptions: TNempFormBuildOptions;
 
-function Assigned_NempFormBuildOptions: Boolean;
+{function Assigned_NempFormBuildOptions: Boolean;
 begin
   result := assigned(fNempFormBuildOptions);
-end;
+end;}
 
 function NempSettingsManager: TNempSettingsManager;
 begin
@@ -1052,12 +1054,13 @@ begin
   result := fNempOptions;
 end;
 
+(*
 function NempFormBuildOptions: TNempFormBuildOptions;
 begin
   if not assigned(fNempFormBuildOptions) then
     fNempFormBuildOptions := TNempFormBuildOptions.create;
   result := fNempFormBuildOptions;
-end;
+end;*)
 
 
 
@@ -3106,7 +3109,7 @@ begin
             IntToStr(fLeft  ) + ';' +
             IntToStr(fWidth ) + ';' +
             IntToStr(fHeight) + ';' +
-            BoolToStr(fDocked ) + ';' +
+            BoolToStr(fDocked) +';' +
             BoolToStr(fVisible)
 end;
 

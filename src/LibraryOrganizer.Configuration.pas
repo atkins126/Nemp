@@ -8,7 +8,7 @@ uses
   gnuGettext, Nemp_RessourceStrings, MyDialogs, NempAudioFiles, LibraryOrganizer.Configuration.NewLayer,
   LibraryOrganizer.Base, LibraryOrganizer.Files, LibraryOrganizer.Playlists,
   Vcl.StdCtrls, Vcl.ExtCtrls, VirtualTrees, Vcl.ComCtrls, System.Actions,
-  Vcl.ActnList, Vcl.Menus, ActiveX;
+  Vcl.ActnList, Vcl.Menus, ActiveX, Vcl.Mask, VCL.Themes;
 
 type
  
@@ -23,7 +23,6 @@ type
     BtnDeleteCategory: TButton;
     grpBoxCategories: TGroupBox;
     BtnApply: TButton;
-    checkBoxNewFilesCategory: TCheckBox;
     cbNewFilesCategory: TComboBox;
     lblDefaultCategory: TLabel;
     grpBoxSortLevels: TGroupBox;
@@ -46,7 +45,7 @@ type
     grpBoxView: TGroupBox;
     lblPlaylistCaptionMode: TLabel;
     cbShowCoverForAlbum: TCheckBox;
-    cbShowCollectionCount: TCheckBox;
+    cbShowElementCount: TCheckBox;
     cbPlaylistCaptionMode: TComboBox;
     ActionEditLayer: TAction;
     PopupLayers: TPopupMenu;
@@ -62,8 +61,6 @@ type
     pnlLayerButtons: TPanel;
     cbDefaultCategory: TComboBox;
     pnlLayerAdds: TPanel;
-    lblCoverFlowSorting: TLabel;
-    cbCoverFlowSorting: TComboBox;
     pnlCategoryButtons: TPanel;
     pnlCategoryAdds: TPanel;
     PnlMain: TPanel;
@@ -78,7 +75,16 @@ type
     Moveup2: TMenuItem;
     Movedown2: TMenuItem;
     Splitter1: TSplitter;
-    cbShowCategoryCount: TCheckBox;
+    lblPlaylistSortMode: TLabel;
+    cbPlaylistSortMode: TComboBox;
+    cbPlaylistSortDirection: TComboBox;
+    grpBoxPlaylists: TGroupBox;
+    grpBoxCoverflow: TGroupBox;
+    lblCoverFlowSorting: TLabel;
+    btnEditCoverflow: TButton;
+    cbMissingCoverMode: TComboBox;
+    edtCoverFlowSortings: TEdit;
+    lblRecentlyAddedCategory: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -104,7 +110,6 @@ type
     procedure BtnCancelClick(Sender: TObject);
     procedure ActionEditCategoryExecute(Sender: TObject);
     procedure BtnOKClick(Sender: TObject);
-    procedure checkBoxNewFilesCategoryClick(Sender: TObject);
     procedure VSTSortingsDragOver(Sender: TBaseVirtualTree; Source: TObject;
       Shift: TShiftState; State: TDragState; Pt: TPoint; Mode: TDropMode;
       var Effect: Integer; var Accept: Boolean);
@@ -127,7 +132,10 @@ type
     procedure ActionMoveCategoryDownExecute(Sender: TObject);
     procedure PopupCategoriesPopup(Sender: TObject);
     procedure PopupLayersPopup(Sender: TObject);
-    procedure cbCoverFlowSortingChange(Sender: TObject);
+    procedure btnEditCoverflowClick(Sender: TObject);
+    procedure VSTCategoriesPaintText(Sender: TBaseVirtualTree;
+      const TargetCanvas: TCanvas; Node: PVirtualNode; Column: TColumnIndex;
+      TextType: TVSTTextType);
   private
     { Private declarations }
     FileCategories: TLibraryCategoryList;
@@ -143,9 +151,12 @@ type
     procedure RefreshCategoryButtons;
     procedure RefreshLayerActions(Node: PVirtualNode; rc: TRootCollection);
 
+    procedure FillCoverFlowSortingLabel(aConfig: TCollectionConfig);
 
     procedure PrepareNewLayerForm(isRoot: Boolean);
-    procedure PrepareEditLayerForm(AllowDirectory: Boolean; aType: teCollectionContent; aSorting: teCollectionSorting);
+    // procedure PrepareEditLayerForm(AllowDirectory: Boolean; aType: teCollectionContent; aSorting: teCollectionSorting);
+    procedure PrepareEditLayerForm(AllowDirectory: Boolean; aConfig: TCollectionConfig);
+    procedure PrepareEditCoverflowForm(aConfig: TCollectionConfig);
 
     function CategoryNameExists(aName: String; Categories: TLibraryCategoryList): Boolean;
     function NewUniqueCategoryName(Categories: TLibraryCategoryList): String;
@@ -206,17 +217,6 @@ begin
   VSTCategories.NodeDataSize := SizeOf(TLibraryCategory);
   VSTSortings.NodeDataSize := SizeOf(TAudioCollection);
 
-  // Valid Sortings for Coverflow
-  cbCoverFlowSorting.Clear;
-  cbCoverFlowSorting.Items.AddObject( CollectionSortingNames[csDefault], TObject(csDefault));
-  cbCoverFlowSorting.Items.AddObject(CollectionSortingNames[csAlbum], TObject(csAlbum));
-  cbCoverFlowSorting.Items.AddObject(CollectionSortingNames[csArtistAlbum], TObject(csArtistAlbum));
-  cbCoverFlowSorting.Items.AddObject(CollectionSortingNames[csGenre], TObject(csGenre));
-  cbCoverFlowSorting.Items.AddObject(CollectionSortingNames[csYear], TObject(csYear));
-  cbCoverFlowSorting.Items.AddObject(CollectionSortingNames[csFileAge], TObject(csFileAge));
-  cbCoverFlowSorting.Items.AddObject(CollectionSortingNames[csDirectory], TObject(csDirectory));
-  cbCoverFlowSorting.Items.AddObject( CollectionSortingNames[csCount], TObject(csCount));
-  cbCoverFlowSorting.ItemIndex := 0;
 end;
 
 procedure TFormLibraryConfiguration.FormDestroy(Sender: TObject);
@@ -244,9 +244,8 @@ begin
   for iRC := 0 to OrganizerSettings.RootCollectionCount - 1 do begin
     aRootConfig := OrganizerSettings.RootCollectionConfig[iRC];
     newRoot := TRootCollection.Create(Nil);
-    for i := 0 to aRootConfig.Count - 1 do begin
-      newRoot.AddSubCollectionType(aRootConfig[i].CollectionContent, aRootConfig[i].CollectionSorting);
-    end;
+    for i := 0 to aRootConfig.Count - 1 do
+      newRoot.AddSubCollectionType(aRootConfig[i]);
     RootCollections.Add(newRoot);
   end;
   RootCollections.OwnsObjects := False;
@@ -263,21 +262,23 @@ begin
   FillCategoryTree;
   FillCategoryComboBoxes;
   FillCollectionTree;
-
-  cbCoverFlowSorting.ItemIndex := cbCoverFlowSorting.Items.IndexOfObject(
-    TObject(OrganizerSettings.CoverFlowRootCollectionConfig[0].CollectionSorting)
-  );
+  FillCoverFlowSortingLabel(OrganizerSettings.CoverFlowRootCollectionConfig[0]);
+  cbMissingCoverMode.ItemIndex := Integer(MedienBib.MissingCoverMode);
 
   cbAlbumKeymode.ItemIndex := Integer(OrganizerSettings.AlbumKeyMode);
   cbIgnoreCDDirectories.Checked := OrganizerSettings.TrimCDFromDirectory;
   editCDNames.Text := OrganizerSettings.CDNames.DelimitedText;
-  cbShowCollectionCount.Checked := OrganizerSettings.ShowCollectionCount;
-  cbShowCategoryCount.Checked := OrganizerSettings.ShowCategoryCount;
+  // cbShowCollectionCount.Checked := OrganizerSettings.ShowCollectionCount;
+  cbShowElementCount.Checked := OrganizerSettings.ShowElementCount;
   cbShowCoverForAlbum.Checked := OrganizerSettings.ShowCoverArtOnAlbum;
-  checkBoxNewFilesCategory.Checked := OrganizerSettings.UseNewCategory;
+  // checkBoxNewFilesCategory.Checked := OrganizerSettings.UseNewCategory;
+  // cbSmartAdd.Checked := OrganizerSettings.UseSmartAdd;
   cbPlaylistCaptionMode.ItemIndex := Integer(OrganizerSettings.PlaylistCaptionMode);
+  cbPlaylistSortMode.ItemIndex := Integer(OrganizerSettings.PlaylistSorting);
+  cbPlaylistSortDirection.ItemIndex := Integer(OrganizerSettings.PlaylistSortDirection);
 
-  cbNewFilesCategory.Enabled := checkBoxNewFilesCategory.Checked;
+  // cbNewFilesCategory.Enabled := checkBoxNewFilesCategory.Checked;
+  // cbSmartAdd.Enabled := checkBoxNewFilesCategory.Checked;
 end;
 
 procedure TFormLibraryConfiguration.FillCategoryComboBoxes;
@@ -289,13 +290,15 @@ begin
 
   cbDefaultCategory.Items.Clear;
   cbNewFilesCategory.Items.Clear;
+
+  cbNewFilesCategory.Items.Add(CategoryRecentlyAddedEmpty);
   for i := 0 to FileCategories.Count - 1 do begin
     cbDefaultCategory.Items.Add(FileCategories[i].Name);
     cbNewFilesCategory.Items.Add(FileCategories[i].Name);
   end;
 
   cbDefaultCategory.ItemIndex := GetDefaultCategoryIndex(FileCategories);
-  cbNewFilesCategory.ItemIndex := GetNewCategoryIndex(FileCategories);
+  cbNewFilesCategory.ItemIndex := GetNewCategoryIndex(FileCategories) + 1;
 
   cbDefaultCategory.OnChange := cbDefaultCategoryChange;
   cbNewFilesCategory.OnChange := cbNewFilesCategoryChange;
@@ -334,6 +337,19 @@ begin
   VSTSortings.EndUpdate;
 end;
 
+procedure TFormLibraryConfiguration.FillCoverFlowSortingLabel(aConfig: TCollectionConfig);
+var
+  s: String;
+begin
+  s := _(CollectionSortingNames[aConfig.PrimarySorting]);
+  if aConfig.SecondarySorting <> csDefault then begin
+    s := s + ', ' + _(CollectionSortingNames[aConfig.SecondarySorting]);
+    if aConfig.TertiarySorting <> csDefault then
+      s := s + ', ' + _(CollectionSortingNames[aConfig.TertiarySorting]);
+  end;
+  edtCoverFlowSortings.Text := s;
+end;
+
 
 procedure TFormLibraryConfiguration.VSTCategoriesEditing(
   Sender: TBaseVirtualTree; Node: PVirtualNode; Column: TColumnIndex;
@@ -361,6 +377,13 @@ begin
   lc := Sender.GetNodeData<TLibraryCategory>(Node);
   lc.Name := NewText;
   fCategoriesChanged := True;
+end;
+
+procedure TFormLibraryConfiguration.VSTCategoriesPaintText(
+  Sender: TBaseVirtualTree; const TargetCanvas: TCanvas; Node: PVirtualNode;
+  Column: TColumnIndex; TextType: TVSTTextType);
+begin
+  TargetCanvas.Font.Color := TStyleManager.ActiveStyle.GetSystemColor(clWindowText)
 end;
 
 procedure TFormLibraryConfiguration.VSTSortingsGetText(Sender: TBaseVirtualTree;
@@ -394,10 +417,7 @@ begin
   if not assigned(Node) then
     exit;
   rc := Sender.GetNodeData<TRootCollection>(Node);
-
   RefreshLayerActions(Node, rc);
-  //ActionAddLayer.Enabled := NOT rc.IsDirectoryCollection;
-  //ActionDeleteLayer.Enabled := (Sender.GetNodeLevel(Node) = 0) or (rc.LayerDepth > 1)
 end;
 
 function TFormLibraryConfiguration.CategoryNameExists(aName: String; Categories: TLibraryCategoryList): Boolean;
@@ -412,11 +432,6 @@ begin
     end;
 end;
 
-procedure TFormLibraryConfiguration.cbCoverFlowSortingChange(Sender: TObject);
-begin
-  fCollectionsChanged := True;
-end;
-
 procedure TFormLibraryConfiguration.cbDefaultCategoryChange(Sender: TObject);
 begin
   SetDefaultCategoryIndex(FileCategories, cbDefaultCategory.ItemIndex);
@@ -425,14 +440,8 @@ end;
 
 procedure TFormLibraryConfiguration.cbNewFilesCategoryChange(Sender: TObject);
 begin
-  SetNewCategoryIndex(FileCategories, cbNewFilesCategory.ItemIndex);
+  SetNewCategoryIndex(FileCategories, cbNewFilesCategory.ItemIndex - 1);
   VSTCategories.Invalidate;
-end;
-
-procedure TFormLibraryConfiguration.checkBoxNewFilesCategoryClick(
-  Sender: TObject);
-begin
-  cbNewFilesCategory.Enabled := checkBoxNewFilesCategory.Checked;
 end;
 
 function TFormLibraryConfiguration.CategoryIndexExists(aIndex: Integer; CatEdit, CatLibrary: TLibraryCategoryList): Boolean;
@@ -712,14 +721,22 @@ begin
   FillCategoryComboBoxes;
 end;
 
-procedure TFormLibraryConfiguration.PrepareEditLayerForm(AllowDirectory: Boolean;
-  aType: teCollectionContent; aSorting: teCollectionSorting);
+procedure TFormLibraryConfiguration.PrepareEditLayerForm(AllowDirectory: Boolean; aConfig: TCollectionConfig);
 begin
   if not assigned(FormNewLayer) then
     Application.CreateForm(TFormNewLayer, FormNewLayer);
   FormNewLayer.FillPropertiesSelection(AllowDirectory);
-  FormNewLayer.SetDefaultValues(aType, aSorting);
-  FormNewLayer.EditValue := True;
+  FormNewLayer.SetDefaultValues(aConfig);// (aType, aSorting);
+  FormNewLayer.EditMode := LibraryOrganizer.Configuration.NewLayer.teEdit;
+end;
+
+procedure TFormLibraryConfiguration.PrepareEditCoverflowForm(aConfig: TCollectionConfig);
+begin
+  if not assigned(FormNewLayer) then
+    Application.CreateForm(TFormNewLayer, FormNewLayer);
+  FormNewLayer.FillPropertiesSelection(False);
+  FormNewLayer.SetDefaultValues(aConfig);
+  FormNewLayer.EditMode := teCoverFlow;
 end;
 
 procedure TFormLibraryConfiguration.PrepareNewLayerForm(isRoot: Boolean);
@@ -727,7 +744,7 @@ begin
   if not assigned(FormNewLayer) then
     Application.CreateForm(TFormNewLayer, FormNewLayer);
   FormNewLayer.FillPropertiesSelection(isRoot);
-  FormNewLayer.EditValue := False;
+  FormNewLayer.EditMode := teNew;
 end;
 
 procedure TFormLibraryConfiguration.ActionAddRootLayerExecute(Sender: TObject);
@@ -740,7 +757,7 @@ begin
   if FormNewLayer.ShowModal = mrOk then begin
     fCollectionsChanged := True;
     newRoot := TRootCollection.Create(Nil);
-    newRoot.AddSubCollectionType(FormNewLayer.CollectionType, FormNewLayer.SortingType);
+    newRoot.AddSubCollectionType(FormNewLayer.NewConfig);
     RootCollections.Add(newRoot);
     NewNode := VSTSortings.AddChild(nil, newRoot);
     for iLevel := 0 to TRootCollection(newRoot).LayerDepth - 1 do
@@ -761,7 +778,7 @@ begin
   if FormNewLayer.ShowModal = mrOk then begin
     fCollectionsChanged := True;
     rc := VSTSortings.GetNodeData<TRootCollection>(aNode);
-    rc.InsertSubCollectionType(VSTSortings.GetNodeLevel(aNode), FormNewLayer.CollectionType, FormNewLayer.SortingType);
+    rc.InsertSubCollectionType(VSTSortings.GetNodeLevel(aNode), FormNewLayer.NewConfig);
     // The data assigned to each node under one RootCollectionNode is all the same, so we can just add a new child
     // at the end of the current subtree and trigger a repaint of the Tree
     while aNode.ChildCount > 0 do
@@ -772,6 +789,17 @@ begin
   end;
 end;
 
+procedure TFormLibraryConfiguration.btnEditCoverflowClick(Sender: TObject);
+begin
+
+  PrepareEditCoverflowForm(OrganizerSettings.CoverFlowRootCollectionConfig[0]);
+  if FormNewLayer.ShowModal = mrOk then begin
+    fCollectionsChanged := True;
+
+    OrganizerSettings.CoverFlowRootCollectionConfig[0] := FormNewLayer.NewConfig;
+    FillCoverFlowSortingLabel(OrganizerSettings.CoverFlowRootCollectionConfig[0]);
+  end;
+end;
 
 procedure TFormLibraryConfiguration.ActionDeleteLayerExecute(Sender: TObject);
 var
@@ -829,18 +857,9 @@ begin
   level := VSTSortings.GetNodeLevel(aNode);
   if level > 0 then begin
     rc := VSTSortings.GetNodeData<TRootCollection>(aNode);
-
-    PrepareEditLayerForm(rc.LayerDepth <= 1,
-        rc.CollectionConfigList[level-1].CollectionContent,
-        rc.CollectionConfigList[level-1].CollectionSorting
-        );
-
+    PrepareEditLayerForm(rc.LayerDepth <= 1, rc.CollectionConfigList[level-1] );
     if FormNewLayer.ShowModal = mrOk then begin
-      rc.ChangeSubCollectionType(level-1,
-        FormNewLayer.CollectionType,
-        FormNewLayer.SortingType
-      );
-
+      rc.ChangeSubCollectionType(level-1, FormNewLayer.NewConfig );
       RefreshLayerActions(aNode, rc);
       VSTSortings.Invalidate;
     end;
@@ -853,6 +872,11 @@ var
   i: Integer;
   newCat: TLibraryFileCategory;
 begin
+  if (MedienBib.StatusBibUpdate <> 0) then begin
+    MessageDLG((Warning_MedienBibIsBusy_Config), mtWarning, [MBOK], 0);
+    exit;
+  end;
+
   if fCategoriesChanged then begin
     MedienBib.ClearFileCategories;
     // create new Categories in Medienbib
@@ -868,24 +892,27 @@ begin
   if fCollectionsChanged then begin
     // Convert RootCollections to OrganizerSettings
     OrganizerSettings.Clear;
-    for i := 0 to RootCollections.Count - 1 do begin
+    for i := 0 to RootCollections.Count - 1 do
       OrganizerSettings.AddConfig(TRootCollection(RootCollections[i]).CollectionConfigList);
-    end;
-    OrganizerSettings.ChangeCoverFlowSorting(
-      teCollectionSorting(cbCoverFlowSorting.Items.Objects[cbCoverFlowSorting.ItemIndex])
-    );
   end;
+
+  MedienBib.MissingCoverMode := teMissingCoverPreSorting(cbMissingCoverMode.ItemIndex);
 
   OrganizerSettings.AlbumKeyMode := teAlbumKeyMode(cbAlbumKeymode.ItemIndex);
   OrganizerSettings.TrimCDFromDirectory := cbIgnoreCDDirectories.Checked;
   OrganizerSettings.CDNames.DelimitedText := editCDNames.Text;
-  OrganizerSettings.ShowCollectionCount := cbShowCollectionCount.Checked;
-  OrganizerSettings.ShowCategoryCount := cbShowCategoryCount.Checked;
+  OrganizerSettings.ShowElementCount := cbShowElementCount.Checked;
+  // OrganizerSettings.ShowCollectionCount := cbShowCollectionCount.Checked;
+  // OrganizerSettings.ShowCategoryCount := cbShowCategoryCount.Checked;
   OrganizerSettings.ShowCoverArtOnAlbum := cbShowCoverForAlbum.Checked;
-  OrganizerSettings.UseNewCategory := checkBoxNewFilesCategory.Checked;
+  // OrganizerSettings.UseNewCategory := checkBoxNewFilesCategory.Checked;
+  // OrganizerSettings.UseSmartAdd := cbSmartAdd.Checked;
   OrganizerSettings.PlaylistCaptionMode := tePlaylistCaptionMode(cbPlaylistCaptionMode.ItemIndex);
+  OrganizerSettings.PlaylistSorting := tePlaylistCollectionSorting(cbPlaylistSortMode.ItemIndex);
+  OrganizerSettings.PlaylistSortDirection := teSortDirection(cbPlaylistSortDirection.ItemIndex);
   NempOrganizerSettings.Assign(OrganizerSettings);
 
+  MedienBib.ChangePlaylistCollectionSorting(NempOrganizerSettings.PlaylistSorting, NempOrganizerSettings.PlaylistSortDirection);
   MedienBib.ReFillFileCategories;
 end;
 

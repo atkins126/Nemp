@@ -42,9 +42,9 @@ type
       function ComparePrefix(aPrefix: String): Integer; override;
       function IndexOf(aCollection: TAudioCollection): Integer; override;
 
-      procedure Analyse(recursive: Boolean); override; // empty
+      procedure Analyse(recursive, ForceAnalysis: Boolean); override; // empty
       procedure Sort(doRecursive: Boolean = True); override; // empty
-      procedure ReSort(newSorting: teCollectionSorting); override; // empty
+      procedure ReSort(newSorting: teCollectionSorting; newDirection: teSortDirection); override; // empty
       procedure SortCollectionLevel(aLevel: Integer; ForceSorting: Boolean = False); override; // empty
 
   end;
@@ -147,7 +147,7 @@ begin
   result := Nil;
 end;
 
-procedure TAudioWebradioCollection.Analyse(recursive: Boolean);
+procedure TAudioWebradioCollection.Analyse(recursive, ForceAnalysis: Boolean);
 begin
   // nothing to do
 end;
@@ -184,7 +184,7 @@ begin
 end;
 
 procedure TAudioWebradioCollection.ReSort(
-  newSorting: teCollectionSorting);
+  newSorting: teCollectionSorting; newDirection: teSortDirection);
 begin
   // nothing to do
 end;
