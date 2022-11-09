@@ -1,23 +1,54 @@
+{
+
+    Unit LibraryOrganizer.Base
+
+    - Basic classes for the new (2022) MediaLibrary concept with Categories
+      and different Layers in the TreeView
+
+    ---------------------------------------------------------------
+    Nemp - Noch ein Mp3-Player
+    Copyright (C) 2005-2022, Daniel Gaussmann
+    http://www.gausi.de
+    mail@gausi.de
+    ---------------------------------------------------------------
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+
+    See license.txt for more information
+
+    ---------------------------------------------------------------
+}
 unit LibraryOrganizer.Base;
 
 interface
 
 uses
   Windows, System.Classes, System.SysUtils, System.Generics.Collections, System.Generics.Defaults,
-  System.Math, DriveRepairTools,        dialogs,
+  System.Math, DriveRepairTools,
   NempAudioFiles, NempFileUtils, Nemp_ConstantsAndTypes, Nemp_RessourceStrings;
 
 resourcestring
   rsCollectionDataUnknown = '- ? -';
 
-  rsDefaultCategoryAll = 'Music';
-  rsDefaultCategoryNew = 'Recently added';
-  rsDefaultCategoryAudioBook = 'Audio books';
-  rsNewCategoryName = 'New category';
-
 const
   // these category names are set automatically. The "name" should always be exactly like this
   // Translation will be done in the GetCaption
+  //rsDefaultCategoryAll = 'Music';
+  //rsDefaultCategoryNew = 'Recently added';
+  //rsDefaultCategoryAudioBook = 'Audio books';
+  rsNewCategoryName = 'New category';
+
   rsDefaultCategoryPlaylist = 'Playlists';
   rsDefaultCategoryFavPlaylist = 'Favourite playlists';
   rsDefaultCategoryWebradio = 'Webradio';
@@ -31,6 +62,7 @@ const
   MP3DB_CAT_TAG = 4;
   MP3DB_CAT_ISDEFAULT = 5;
   MP3DB_CAT_ISNEW = 6;
+  MP3DB_CAT_ISUSERDEFINED = 7;
 
 const
 {
@@ -40,7 +72,7 @@ const
   Layer1,sort+,sort+,sort-;Layer2,sort+;Layer3,sort+,sort-,sort+
 }
 
-  cDefaultCategoryConfigStrings: Array [0..1] of String = ('c,0+;d,0+', 'e,0+');  // Interpret-Alben und Verzeichnis-Struktur
+  cDefaultCategoryConfigStrings: Array [0..2] of String = ('d,2+,4-,0+', 'c,0+;d,0+', 'e,0+');  // Albums, Interpret-Alben und Verzeichnis-Struktur
   cDefaultCategoryConfigStr = 'e,0+'; // Verzeichnis-Struktur
   cDefaultCoverFlowConfigStr  = 'd,2+,4-';  // Alben sortiert nach Interpret + Erscheinungsjahr
 
@@ -138,7 +170,7 @@ const
   rcTagGloud = 'TagCloud';
   rcCoverID = 'CoverID';
 
-  CollectionSorting_Default  = 'Name';
+  CollectionSorting_Default  = 'Default';
   CollectionSorting_ByAlbum  = 'Album';
   CollectionSorting_ByArtist  = 'Artist';
   CollectionSorting_ByCount  = 'Count';
@@ -188,10 +220,17 @@ type
       fPlaylistSortDirection: teSortDirection;
       fTrimCDFromDirectory: Boolean;
       fCDNames: TStringList;
+      fShowPlaylistCategories: Boolean;
+      fShowWebradioCategory: Boolean;
       // fShowCollectionCount: Boolean;
       // fShowCategoryCount: Boolean;
       fShowElementCount: Boolean;
       fShowCoverArtOnAlbum: Boolean;
+
+      fSamplerSortingIgnoreReleaseYear: Boolean;
+      fPreferAlbumArtist: Boolean;
+      fIgnoreVariousAlbumArtists: Boolean;
+
       // fUseNewCategory: Boolean;
       // fUseSmartAdd: Boolean;
       fDefaultRootCollectionConfig: TCollectionConfigList;
@@ -217,11 +256,16 @@ type
       //property GroupFileAgeByYear   : Boolean read fGroupFileAgeByYear   write fGroupFileAgeByYear   ;
       //property ShowCollectionCount  : Boolean read fShowCollectionCount write fShowCollectionCount;
       //property ShowCategoryCount    : Boolean read fShowCategoryCount write fShowCategoryCount;
+      property ShowPlaylistCategories: Boolean read fShowPlaylistCategories write fShowPlaylistCategories;
+      property ShowWebradioCategory: Boolean read fShowWebradioCategory write fShowWebradioCategory;
       property ShowElementCount     : Boolean read fShowElementCount write fShowElementCount;
       property ShowCoverArtOnAlbum  : Boolean read fShowCoverArtOnAlbum write fShowCoverArtOnAlbum;
       // property UseNewCategory       : Boolean read fUseNewCategory write fUseNewCategory;
       // property UseSmartAdd          : Boolean read fUseSmartAdd write fUseSmartAdd;
       property AlbumKeyMode: teAlbumKeyMode read fAlbumKeyMode write fAlbumKeyMode;
+      property SamplerSortingIgnoreReleaseYear: Boolean read fSamplerSortingIgnoreReleaseYear write fSamplerSortingIgnoreReleaseYear;
+      property PreferAlbumArtist: Boolean read fPreferAlbumArtist write fPreferAlbumArtist;
+      property IgnoreVariousAlbumArtists: Boolean read fIgnoreVariousAlbumArtists write fIgnoreVariousAlbumArtists;
       property PlaylistCaptionMode: tePlaylistCaptionMode read fPlaylistCaptionMode write fPlaylistCaptionMode;
       property PlaylistSorting: tePlaylistCollectionSorting read fPlaylistSorting write fPlaylistSorting;
       property PlaylistSortDirection: teSortDirection read fPlaylistSortDirection write fPlaylistSortDirection;
@@ -265,6 +309,7 @@ type
       fArchiveID: Integer;
       fCount: Integer;
       fKey: String;
+      fMatchesCurrentSearch: Boolean;
       function GetCaption: String; virtual; abstract;
       function GetSimpleCaption: String; virtual; abstract;
 
@@ -281,6 +326,7 @@ type
       property Caption: String read GetCaption;
       property SimpleCaption: String read GetSimpleCaption;
       property CoverID: String read GetCoverID;
+      property MatchesCurrentSearch: Boolean read fMatchesCurrentSearch;
 
       property CollectionClass: teCollectionClass read fCollectionClass;
 
@@ -303,6 +349,10 @@ type
 
       function MatchPrefix(aPrefix: String): Boolean; virtual; abstract;
       function ComparePrefix(aPrefix: String): Integer; virtual; abstract;
+
+      // PerformSearch will search the Keyword(s) in the Collection (including SubCollections),
+      // and set the field fMatchesCurrentSearch accordingly
+      function PerformSearch(aKeyword: String; ParentAreadyMatches: Boolean): Boolean; virtual; abstract;
 
       function IndexOf(aCollection: TAudioCollection): Integer; virtual; abstract;
 
@@ -355,6 +405,7 @@ type
       fCaptionMode: Integer; // Only used in PlaylistCategory
       fIsDefault: Boolean;
       fIsNew: Boolean;
+      fIsUserDefined: Boolean; // automatically created categories should be "multlanguage"
 
       function GetCollection(Index: Integer): TAudioCollection;
       function GetCollectionCount: Integer;
@@ -380,6 +431,7 @@ type
 
       property IsDefault: Boolean read fIsDefault write fIsDefault;
       property IsNew    : Boolean read fIsNew     write fIsNew    ;
+      property IsUserDefined: Boolean read fIsUserDefined    write fIsUserDefined   ;
       property BrowseMode: Integer read fBrowseMode write fBrowseMode;
 
       property Index: Byte read fIndex write fIndex;
@@ -734,6 +786,9 @@ var
   i, iRC: Integer;
 begin
   fAlbumKeyMode        := Source.fAlbumKeyMode;
+  fSamplerSortingIgnoreReleaseYear := Source.SamplerSortingIgnoreReleaseYear;
+  fPreferAlbumArtist := Source.fPreferAlbumArtist;
+  fIgnoreVariousAlbumArtists := Source.fIgnoreVariousAlbumArtists;
   fPlaylistCaptionMode := Source.fPlaylistCaptionMode;
   fPlaylistSorting       := Source.fPlaylistSorting;
   fPlaylistSortDirection := Source.fPlaylistSortDirection;
@@ -746,6 +801,8 @@ begin
   fShowCoverArtOnAlbum := Source.fShowCoverArtOnAlbum;
   // fUseNewCategory      := Source.fUseNewCategory;
   // fUseSmartAdd         := Source.fUseSmartAdd;
+  fShowPlaylistCategories := Source.fShowPlaylistCategories;
+  fShowWebradioCategory   := Source.fShowWebradioCategory;
 
   // assign CategoryConfig
   ClearCategoryConfig;
@@ -892,7 +949,7 @@ var
   categoryString, defStr: String;
   i, categoryCount: Integer;
 begin
-  categoryCount := NempSettingsManager.ReadInteger('LibraryOrganizer', 'RootCount', 2);
+  categoryCount := NempSettingsManager.ReadInteger('LibraryOrganizer', 'RootCount', 3);
   if categoryCount = 0 then
     categoryCount := 1;
   if categoryCount > 10 then
@@ -902,7 +959,7 @@ begin
   SetLength(fCategoryConfig, categoryCount);
   for i := 0 to categoryCount-1 do begin
     fCategoryConfig[i] := TCollectionConfigList.Create;
-    if i <= 1 then
+    if i <= 2 then
       defStr := cDefaultCategoryConfigStrings[i]
     else
       defStr := cDefaultCategoryConfigStr;
@@ -917,6 +974,9 @@ begin
   CheckCoverFlowConfig;
 
   SetAlbumKeyMode(NempSettingsManager.ReadInteger('LibraryOrganizer', 'AlbumKeyMode', Integer(akAlbumDirectory)));
+  fSamplerSortingIgnoreReleaseYear := NempSettingsManager.ReadBool('LibraryOrganizer', 'SamplerSortingIgnoreReleaseYear', True);
+  fPreferAlbumArtist := NempSettingsManager.ReadBool('LibraryOrganizer', 'PreferAlbumArtist', True);
+  fIgnoreVariousAlbumArtists := NempSettingsManager.ReadBool('LibraryOrganizer', 'IgnoreVariousAlbumArtists', True);
   SetPlaylistCaptionMode(NempSettingsManager.ReadInteger('LibraryOrganizer', 'PlaylistCaptionMode', Integer(pcmFilename)));
   SetPlaylistSorting(NempSettingsManager.ReadInteger('LibraryOrganizer', 'PlaylistSorting', Integer(pcsFilename)));
   SetPlaylistDirection(NempSettingsManager.ReadInteger('LibraryOrganizer', 'PlaylistSortDirection', Integer(sd_Ascending)));
@@ -928,6 +988,8 @@ begin
   //fShowCategoryCount   := NempSettingsManager.ReadBool('LibraryOrganizer', 'ShowCategoryCount', True);
   fShowElementCount   := NempSettingsManager.ReadBool('LibraryOrganizer', 'ShowElementCount', True);
   fShowCoverArtOnAlbum := NempSettingsManager.ReadBool('LibraryOrganizer', 'ShowCoverArtOnAlbum', True);
+  fShowPlaylistCategories := NempSettingsManager.ReadBool('LibraryOrganizer', 'ShowPlaylistCategories', True);
+  fShowWebradioCategory := NempSettingsManager.ReadBool('LibraryOrganizer', 'ShowWebradioCategory', True);
 
   // fUseNewCategory := NempSettingsManager.ReadBool('LibraryOrganizer', 'UseNewCategory', True);
   // fUseSmartAdd := NempSettingsManager.ReadBool('LibraryOrganizer', 'UseSmartAdd', True);
@@ -945,6 +1007,9 @@ begin
   NempSettingsManager.WriteString('LibraryOrganizer', 'CoverflowConfig', RootConfigToIniStr(fCoverFlowRootCollectionConfig) );
 
   NempSettingsManager.WriteInteger('LibraryOrganizer', 'AlbumKeyMode', Integer(fAlbumKeyMode));
+  NempSettingsManager.WriteBool('LibraryOrganizer', 'SamplerSortingIgnoreReleaseYear', fSamplerSortingIgnoreReleaseYear);
+  NempSettingsManager.WriteBool('LibraryOrganizer', 'PreferAlbumArtist', fPreferAlbumArtist);
+  NempSettingsManager.WriteBool('LibraryOrganizer', 'IgnoreVariousAlbumArtists', fIgnoreVariousAlbumArtists);
   NempSettingsManager.WriteInteger('LibraryOrganizer', 'PlaylistCaptionMode', Integer(fPlaylistCaptionMode));
   NempSettingsManager.WriteInteger('LibraryOrganizer', 'PlaylistSorting', Integer(fPlaylistSorting));
   NempSettingsManager.WriteInteger('LibraryOrganizer', 'PlaylistSortDirection', Integer(fPlaylistSortDirection));
@@ -954,6 +1019,8 @@ begin
   //NempSettingsManager.WriteBool('LibraryOrganizer', 'ShowCategoryCount', fShowCategoryCount);
   NempSettingsManager.WriteBool('LibraryOrganizer', 'ShowElementCount', fShowElementCount);
   NempSettingsManager.WriteBool('LibraryOrganizer', 'ShowCoverArtOnAlbum', fShowCoverArtOnAlbum);
+  NempSettingsManager.WriteBool('LibraryOrganizer', 'ShowPlaylistCategories', fShowPlaylistCategories);
+  NempSettingsManager.WriteBool('LibraryOrganizer', 'ShowWebradioCategory', fShowWebradioCategory);
 
   // NempSettingsManager.WriteBool('LibraryOrganizer', 'UseNewCategory', fUseNewCategory);
   // NempSettingsManager.WriteBool('LibraryOrganizer', 'UseSmartAdd', fUseSmartAdd);
@@ -968,6 +1035,7 @@ begin
   fCollections := TAudioCollectionList.Create(True);
   fIsDefault := False;
   fIsNew := False;
+  fIsUserDefined := False;
   for i := 0 to 2 do
     fLastSelectedCollectionData[i] := TCollectionMetaInfo.Create;
 end;
@@ -988,6 +1056,7 @@ begin
   Index := Source.Index;
   IsDefault := Source.IsDefault;
   IsNew := Source.IsNew;
+  IsUserDefined := Source.IsUserDefined;
 end;
 
 procedure TLibraryCategory.Clear;
@@ -1027,6 +1096,7 @@ begin
       MP3DB_CAT_TAG       : fCaptionMode := ReadIntegerFromStream(aStream);
       MP3DB_CAT_ISDEFAULT : fIsDefault := ReadBoolFromStream(aStream);
       MP3DB_CAT_ISNEW     : fIsNew := ReadBoolFromStream(aStream);
+      MP3DB_CAT_ISUSERDEFINED: fIsUserDefined := ReadBoolFromStream(aStream);
 
       DATA_END_ID      : ; // Explicitly do Nothing
     else
@@ -1046,6 +1116,7 @@ begin
   result := result + WriteIntegerToStream(aStream, MP3DB_CAT_TAG, fCaptionMode);
   result := result + WriteBoolToStream(aStream, MP3DB_CAT_ISDEFAULT, fIsDefault);
   result := result + WriteBoolToStream(aStream, MP3DB_CAT_ISNEW, fIsNew);
+  result := result + WriteBoolToStream(aStream, MP3DB_CAT_ISUSERDEFINED, fIsUserDefined);
   result := result + WriteDataEnd(aStream);
 end;
 
@@ -1066,14 +1137,16 @@ end;
 
 function TLibraryCategory.GetCaption: String;
 begin
-  result := fName;
+  if fIsUserDefined then
+    result := fName
+  else
+    result := _(fName);
 end;
 
 function TLibraryCategory.GetCaptionCount: String;
 begin
   result := Format('%s (%d)', [Caption, ItemCount]);
 end;
-
 
 procedure TLibraryCategory.SortCollections(doRecursive: Boolean);
 var
@@ -1087,8 +1160,9 @@ procedure TLibraryCategory.AnalyseCollections(recursive: Boolean);
 var
   i: Integer;
 begin
-  for i := 0 to fCollections.Count - 1 do
+  for i := 0 to fCollections.Count - 1 do begin
     fCollections[i].Analyse(recursive, False);
+  end;
 end;
 
 

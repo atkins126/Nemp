@@ -1,3 +1,34 @@
+{
+
+    Unit LibraryOrganizer.Plylists
+
+    - Playlist-Class for the new (2022) MediaLibrary concept with Categories
+      and different Layers in the TreeView
+
+    ---------------------------------------------------------------
+    Nemp - Noch ein Mp3-Player
+    Copyright (C) 2005-2022, Daniel Gaussmann
+    http://www.gausi.de
+    mail@gausi.de
+    ---------------------------------------------------------------
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+
+    See license.txt for more information
+
+    ---------------------------------------------------------------
+}
 unit LibraryOrganizer.Playlists;
 
 interface
@@ -45,6 +76,8 @@ type
       function ComparePrefix(aPrefix: String): Integer; override;
       function IndexOf(aCollection: TAudioCollection): Integer; override;
 
+      function PerformSearch(aKeyword: String; ParentAreadyMatches: Boolean): Boolean; override;
+
       procedure Analyse(recursiv, ForceAnalysise: Boolean); override; // empty
       procedure Sort(doRecursive: Boolean = True); override; // empty
       procedure ReSort(newSorting: teCollectionSorting; newDirection: teSortDirection); override; // empty
@@ -60,6 +93,7 @@ type
       fDriveManager: TDriveManager;
       fSortDirection: teSortDirection;
       fSortOrder: tePlaylistCollectionSorting;
+      fAutoScan: Boolean;
       procedure NotifyLoading;
     protected
       function GetItemCount: Integer; override;
@@ -68,6 +102,7 @@ type
 
     public
       property DriveManager: TDriveManager read fDriveManager write fDriveManager;
+      property AutoScan: Boolean read fAutoScan write fAutoScan;
 
       constructor Create;
       destructor Destroy; override;
@@ -163,6 +198,12 @@ begin
   result := AnsiContainsText(fKey, aPrefix); // or: only fFileName?
 end;
 
+function TAudioPlaylistCollection.PerformSearch(aKeyword: String;
+  ParentAreadyMatches: Boolean): Boolean;
+begin
+  result := AnsiContainsText(fKey, aKeyword);
+end;
+
 function TAudioPlaylistCollection.ComparePrefix(aPrefix: String): Integer;
 begin
   if MatchPrefix(aPrefix) then
@@ -197,7 +238,10 @@ begin
   // do not Clear and relod the List, if not necessary!
   // reason: GetFiles will be called to view all files, and to handle drag&drop and play/enque
   if fPlaylistFiles.Count = 0 then
-    LoadPlaylistFromFile(fKey, fPlaylistFiles, True, TLibraryPlaylistCategory(fOwnerCategory).DriveManager);
+    LoadPlaylistFromFile(fKey,
+          fPlaylistFiles,
+          TLibraryPlaylistCategory(fOwnerCategory).AutoScan,
+          TLibraryPlaylistCategory(fOwnerCategory).DriveManager);
   for i := 0 to fPlaylistFiles.Count - 1 do
     dest.Add(fPlaylistFiles[i]);
 end;

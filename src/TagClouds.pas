@@ -171,7 +171,6 @@ type
           fPaintBreadCrumbs: TPaintTagList;
           fPaintTags: TPaintTagList;
 
-
           fMouseOverTag: TPaintTag;
           fFocussedTag: TPaintTag;
           fLastFocussedCollectionKey: String;
@@ -179,12 +178,18 @@ type
           fSearchString: String;
           fOnGetHint: TCloudGetHintEvent;
 
+          fPartyModeMultiplier: Single;
+          fCategorySelectionVisible: Boolean;
+
           procedure SetMouseOverTag(Value: TPaintTag);
           procedure SetFocussedTag(Value: TPaintTag);
           function GetFocussedCollection: TAudioFileCollection;
           procedure SetFocussedCollection(Value: TAudioFileCollection);
           procedure SetCollection(Value: TAudioFileCollection);
           function GetCollection: TAudioFileCollection;
+          function GetRootCollection: TAudioFileCollection;
+
+          function CalcBreadCrumbMargin: Integer;
 
           // Painting
           function GetProperFontSize(aTag: TPaintTag):Integer;
@@ -229,8 +234,11 @@ type
           property MouseOverTag: TPaintTag read fMouseOverTag write SetMouseOverTag;
           property FocussedTag: TPaintTag read fFocussedTag write SetFocussedTag;
           property FocussedCollection: TAudioFileCollection read GetFocussedCollection write SetFocussedCollection;
-
+          property RootCollection: TAudioFileCollection read GetRootCollection;
           property OnGetHint: TCloudGetHintEvent read fOnGetHint write fOnGetHint;
+
+          property PartyModeMultiplier: Single read fPartyModeMultiplier write fPartyModeMultiplier;
+          property CategorySelectionVisible: Boolean read fCategorySelectionVisible write fCategorySelectionVisible;
 
           constructor Create(AOwner: TComponent); override;
           destructor Destroy; override;
@@ -410,8 +418,8 @@ end;
 
 procedure TPaintTag.Paint(aCanvas: TCanvas);
 begin
-  aCanvas.Brush.Style := bsClear;
   Erase(aCanvas, (Not fFocussed) and TagCustomizer.TagUseAlphablend);
+  aCanvas.Brush.Style := bsClear;
   if not (fFocussed or fHover) then
     PaintNormal(aCanvas)
   else
@@ -565,6 +573,12 @@ begin
 
   fPaintBreadCrumbs := TPaintTagList.Create(True);
   fPaintTags := TPaintTagList.Create(True);
+
+  fPartyModeMultiplier := 1;
+  fCategorySelectionVisible := True;
+  BevelInner := bvNone;
+  BevelOuter := bvNone;
+  BorderStyle := bsNone;
 end;
 
 destructor TCloudView.Destroy;
@@ -599,6 +613,17 @@ begin
   result := fCollection;
 end;
 
+function TCloudView.GetRootCollection: TAudioFileCollection;
+var
+  rootTag: TPaintTag;
+begin
+  rootTag := GetRootTag;
+  if assigned(rootTag) then
+    result := rootTag.fCollection
+  else
+    result := Nil;
+end;
+
 
 procedure TCloudView.DoPaint;
 var y, i: Integer;
@@ -613,6 +638,8 @@ begin
     try
         Buffer.Width := Width;
         Buffer.Height := Height;
+
+        Buffer.Canvas.Font.Assign(Canvas.Font); // !! important, TPanel and TBitmap seem to use a different Default-Font!
 
           if TagCustomizer.UseBackGround and assigned(TagCustomizer.BackgroundImage) then
           begin
@@ -687,6 +714,13 @@ begin
   DoPaint;
 end;
 
+function TCloudView.CalcBreadCrumbMargin: Integer;
+begin
+  if fCategorySelectionVisible then
+    result := Ceil(FIRST_BREADCRUMB_MARGIN * fPartyModeMultiplier)
+  else
+    result := 0;
+end;
 
 function TCloudView.GetProperFontSize(aTag: TPaintTag): Integer;
 begin
@@ -808,7 +842,7 @@ begin
     end;
 
     // The very first Breadcrumb should be painted with a little margin for the Category-MenuButton
-    x := FIRST_BREADCRUMB_MARGIN;
+    x := CalcBreadCrumbMargin;
     y := TOP_MARGIN;
 
     newLine := TTagLine.Create(Width);
@@ -843,10 +877,10 @@ begin
         newLine := TTagLine.Create(Width);
         fBreadCrumbLines.Add(newLine);
         y := y + lineHeight + BREADCRUMB_VGAP;
-        newTag.SetPosition(FIRST_BREADCRUMB_MARGIN, y);
+        newTag.SetPosition(CalcBreadCrumbMargin, y);
         newLine.Top := y;
         newLine.fHeight := newTag.Height;
-        x := FIRST_BREADCRUMB_MARGIN + newTag.Width + BREADCRUMB_HGAP;
+        x := CalcBreadCrumbMargin + newTag.Width + BREADCRUMB_HGAP;
       end;
 
 
@@ -854,6 +888,9 @@ begin
       fPaintBreadCrumbs.Add(newTag);
     end;
     fTotalBreadCrumbHeight := y + lineHeight + BREADCRUMB_VGAP;
+    if fTotalBreadCrumbHeight < ( CalcBreadCrumbMargin  ) then
+      fTotalBreadCrumbHeight := CalcBreadCrumbMargin  ;
+
   finally
     colList.Free;
   end;
@@ -1527,7 +1564,6 @@ end;
 // Hints by https://www.delphipraxis.net/1098737-post7.html
 procedure TCloudView.CMHintShow(var Message: TCMHintShow);
 var
-   HintCollection: TAudioCollection;
    HintPaintTag: TPaintTag;
    MinHintPosY: Integer;
    HintInfo: PHintInfo;
@@ -1650,6 +1686,7 @@ begin
       end;
   end else
   begin
+    ATarget.Brush.Style := bsSolid;
     ATarget.Brush.Color := BackgroundColor;
     ATarget.FillRect(ATarget.ClipRect);
     ATarget.Draw(-x, -y, BackgroundImage);

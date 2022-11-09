@@ -1,12 +1,13 @@
 object Nemp_MainForm: TNemp_MainForm
   Left = 0
   Top = 0
+  HelpContext = 10000
   Caption = 'Nemp - Noch ein MP3-Player'
-  ClientHeight = 749
+  ClientHeight = 769
   ClientWidth = 1090
   Color = clBtnFace
-  Constraints.MinHeight = 600
-  Constraints.MinWidth = 800
+  Constraints.MinHeight = 300
+  Constraints.MinWidth = 400
   DragMode = dmAutomatic
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -34,28 +35,29 @@ object Nemp_MainForm: TNemp_MainForm
     Left = 0
     Top = 0
     Width = 1090
-    Height = 749
+    Height = 769
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 0
     OnMouseDown = __MainContainerPanelMouseDown
     OnMouseMove = __MainContainerPanelMouseMove
     OnMouseUp = __MainContainerPanelMouseUp
-    OnResize = __MainContainerPanelResize
     Ratio = 0
     OwnerDraw = False
     HierarchyLevel = 0
     SplitterMinSize = 110
     object _ControlPanel: TNempPanel
       Left = 0
-      Top = 649
+      Top = 669
       Width = 1090
       Height = 100
       Align = alBottom
       BevelOuter = bvNone
       PopupMenu = Player_PopupMenu
       TabOrder = 0
-      OnMouseMove = _ControlPanelMouseMove
+      OnMouseDown = __MainContainerPanelMouseDown
+      OnMouseMove = __MainContainerPanelMouseMove
+      OnMouseUp = __MainContainerPanelMouseUp
       OnResize = _ControlPanelResize
       Ratio = 0
       FixedHeight = True
@@ -536,7 +538,6 @@ object Nemp_MainForm: TNemp_MainForm
             PopupMenu = Player_PopupMenu
             Proportional = True
             Stretch = True
-            OnClick = CoverImageClick
             OnDblClick = CoverImageDblClick
             OnMouseDown = ImgDetailCoverMouseDown
             OnMouseMove = ImgDetailCoverMouseMove
@@ -1058,13 +1059,11 @@ object Nemp_MainForm: TNemp_MainForm
           OnAfterItemPaint = PlaylistVSTAfterItemPaint
           OnBeforeItemErase = VSTBeforeItemErase
           OnChange = PlaylistVSTChange
-          OnCollapsed = PlaylistVSTCollapsAndExpanded
           OnColumnDblClick = PlaylistVSTColumnDblClick
           OnDragAllowed = PlaylistVSTDragAllowed
           OnDragOver = PlaylistVSTDragOver
           OnDragDrop = PlaylistVSTDragDrop
           OnEndDrag = PlaylistVSTEndDrag
-          OnExpanded = PlaylistVSTCollapsAndExpanded
           OnGetText = PlaylistVSTGetText
           OnPaintText = VSTPaintText
           OnGetImageIndex = PlaylistVSTGetImageIndex
@@ -1074,8 +1073,7 @@ object Nemp_MainForm: TNemp_MainForm
           OnKeyDown = PlaylistVSTKeyDown
           OnKeyUp = PlaylistVSTKeyUp
           OnRenderOLEData = TreesRenderOLEData
-          OnResize = PlaylistVSTResize
-          OnStartDrag = VSTFilesStartDrag
+          OnStartDrag = PlaylistVSTStartDrag
           Touch.InteractiveGestures = [igPan, igPressAndTap]
           Touch.InteractiveGestureOptions = [igoPanSingleFingerHorizontal, igoPanSingleFingerVertical, igoPanInertia, igoPanGutter, igoParentPassthrough]
           Columns = <
@@ -1663,7 +1661,7 @@ object Nemp_MainForm: TNemp_MainForm
           OwnerDraw = False
           object EDITFastSearch: TEdit
             Left = 58
-            Top = 4
+            Top = 3
             Width = 172
             Height = 21
             AutoSize = False
@@ -1793,7 +1791,6 @@ object Nemp_MainForm: TNemp_MainForm
           OnEdited = VSTEdited
           OnEditing = VSTEditing
           OnEndDrag = LibraryVSTEndDrag
-          OnFocusChanging = VSTFocusChanging
           OnGetText = VSTGetText
           OnPaintText = VSTPaintText
           OnGetImageIndex = VSTGetImageIndex
@@ -1803,7 +1800,6 @@ object Nemp_MainForm: TNemp_MainForm
           OnHeaderDblClick = VSTHeaderDblClick
           OnHeaderDrawQueryElements = VSTHeaderDrawQueryElements
           OnIncrementalSearch = VSTIncrementalSearch
-          OnInitNode = VSTInitNode
           OnKeyDown = VSTKeyDown
           OnKeyUp = PlaylistVSTKeyUp
           OnNewText = VSTNewText
@@ -1814,91 +1810,128 @@ object Nemp_MainForm: TNemp_MainForm
           Columns = <
             item
               Position = 0
+              Text = 'Artist'
               Width = 10
             end
             item
               Position = 1
+              Text = 'Title'
             end
             item
               Position = 2
+              Text = 'Album'
             end
             item
               Position = 3
+              Text = 'Track'
             end
             item
               Position = 4
+              Text = 'CD'
             end
             item
               Position = 5
+              Text = 'Year'
             end
             item
               Position = 6
+              Text = 'Album-Artist'
             end
             item
               Position = 7
+              Text = 'Composer'
             end
             item
               Position = 8
+              Text = 'Duration'
             end
             item
               Position = 9
+              Text = 'Genre'
             end
             item
               Position = 10
+              Text = 'Comment'
             end
             item
               Position = 11
+              Text = 'Bitrate'
             end
             item
               Position = 12
+              Text = 'cbr/vbr'
             end
             item
               Position = 13
+              Text = 'Channelmode'
             end
             item
               Position = 14
+              Text = 'Samplerate'
             end
             item
               Position = 15
+              Text = 'Type'
             end
             item
               Position = 16
+              Text = 'Filename'
             end
             item
               Position = 17
+              Text = 'Directory'
             end
             item
               Position = 18
+              Text = 'Path'
             end
             item
               Position = 19
+              Text = 'Filesize'
             end
             item
               Position = 20
+              Text = 'File created'
             end
             item
               Position = 21
+              Text = 'Rating'
             end
             item
               Position = 22
+              Text = 'Play counter'
             end
             item
               Position = 23
+              Text = 'Track gain'
             end
             item
               Position = 24
+              Text = 'Album gain'
             end
             item
               Position = 25
+              Text = 'Track peak'
             end
             item
               Position = 26
+              Text = 'Album peak'
             end
             item
               Position = 27
+              Text = 'BPM'
             end
             item
               Position = 28
+              Text = 'Lyrics'
+            end
+            item
+              Position = 29
+              Text = 'Tags'
+            end
+            item
+              Position = 30
+              Text = 'Marker'
             end>
         end
       end
@@ -1913,6 +1946,7 @@ object Nemp_MainForm: TNemp_MainForm
       TabOrder = 4
       OnMouseDown = TreePanelMouseDown
       Ratio = 0
+      OnPaint = NewPanelPaint
       OwnerDraw = False
       object AuswahlHeaderPanel0: TNempPanel
         Tag = 2
@@ -1943,7 +1977,7 @@ object Nemp_MainForm: TNemp_MainForm
           BevelOuter = bvLowered
           Padding.Top = 2
           Padding.Bottom = 2
-          PopupMenu = Medialist_Browse_PopupMenu
+          PopupMenu = Medialist_Collection_PopupMenu
           TabOrder = 0
           Ratio = 0
           OnPaint = TABPanelPaint
@@ -1989,7 +2023,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Treeview'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 1
             OnClick = TABPanelAuswahlClick
@@ -2010,7 +2044,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Coverflow'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 2
             OnClick = TABPanelAuswahlClick
@@ -2031,7 +2065,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Show context menu'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 0
             OnClick = TabBtn_Preselection0Click
@@ -2052,7 +2086,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Tag cloud'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 3
             OnClick = TABPanelAuswahlClick
@@ -2067,7 +2101,7 @@ object Nemp_MainForm: TNemp_MainForm
           end
         end
       end
-      object PanelStandardBrowse: TPanel
+      object PanelStandardBrowse: TNempPanel
         Tag = 2
         Left = 0
         Top = 28
@@ -2077,6 +2111,9 @@ object Nemp_MainForm: TNemp_MainForm
         BevelInner = bvRaised
         BevelOuter = bvLowered
         TabOrder = 1
+        Ratio = 0
+        OnPaint = NewPanelPaint
+        OwnerDraw = False
         object SplitterBrowse: TSplitter
           Left = 2
           Top = 81
@@ -2084,6 +2121,7 @@ object Nemp_MainForm: TNemp_MainForm
           Height = 4
           Cursor = crVSplit
           Align = alTop
+          ResizeStyle = rsUpdate
           StyleElements = [seFont, seBorder]
           OnMoved = SplitterBrowseMoved
           ExplicitLeft = 4
@@ -2117,6 +2155,7 @@ object Nemp_MainForm: TNemp_MainForm
           Indent = 14
           Margin = 0
           ParentFont = False
+          PopupMenu = Medialist_Category_PopupMenu
           ScrollBarOptions.ScrollBars = ssVertical
           StyleElements = [seClient, seBorder]
           TabOrder = 0
@@ -2166,14 +2205,14 @@ object Nemp_MainForm: TNemp_MainForm
           Font.Style = []
           Header.AutoSizeIndex = 0
           Header.Background = clWindow
-          Header.Height = 20
+          Header.Height = 18
           Header.Options = [hoAutoResize, hoDrag, hoVisible]
           Images = DummyImageList
           IncrementalSearch = isAll
           Indent = 14
           Margin = 0
           ParentFont = False
-          PopupMenu = Medialist_Browse_PopupMenu
+          PopupMenu = Medialist_Collection_PopupMenu
           ScrollBarOptions.ScrollBars = ssVertical
           StyleElements = [seClient, seBorder]
           TabOrder = 1
@@ -2254,7 +2293,7 @@ object Nemp_MainForm: TNemp_MainForm
           BevelOuter = bvLowered
           Padding.Top = 2
           Padding.Bottom = 2
-          PopupMenu = Medialist_Browse_PopupMenu
+          PopupMenu = Medialist_Collection_PopupMenu
           TabOrder = 0
           Ratio = 0
           OnPaint = TABPanelPaint
@@ -2300,7 +2339,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Treeview'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 1
             OnClick = TABPanelAuswahlClick
@@ -2321,7 +2360,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Coverflow'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 2
             OnClick = TABPanelAuswahlClick
@@ -2342,7 +2381,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Show context menu'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 0
             OnClick = TabBtn_Preselection0Click
@@ -2363,7 +2402,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Tag cloud'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 3
             OnClick = TABPanelAuswahlClick
@@ -2387,7 +2426,7 @@ object Nemp_MainForm: TNemp_MainForm
         Align = alClient
         BevelInner = bvRaised
         BevelOuter = bvLowered
-        PopupMenu = Medialist_Browse_PopupMenu
+        PopupMenu = Medialist_Collection_PopupMenu
         TabOrder = 1
         OnDblClick = PanelCoverBrowseDblClick
         OnEndDrag = PanelCoverBrowseEndDrag
@@ -2547,7 +2586,7 @@ object Nemp_MainForm: TNemp_MainForm
           BevelOuter = bvLowered
           Padding.Top = 2
           Padding.Bottom = 2
-          PopupMenu = Medialist_Browse_PopupMenu
+          PopupMenu = Medialist_Collection_PopupMenu
           TabOrder = 0
           Ratio = 0
           OnPaint = TABPanelPaint
@@ -2604,7 +2643,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Treeview'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 1
             OnClick = TABPanelAuswahlClick
@@ -2625,7 +2664,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Coverflow'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 2
             OnClick = TABPanelAuswahlClick
@@ -2646,7 +2685,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Show context menu'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 0
             OnClick = TabBtn_Preselection0Click
@@ -2667,7 +2706,7 @@ object Nemp_MainForm: TNemp_MainForm
             Height = 24
             Hint = 'Tag cloud'
             ParentShowHint = False
-            PopupMenu = Medialist_Browse_PopupMenu
+            PopupMenu = Medialist_Collection_PopupMenu
             ShowHint = True
             TabOrder = 3
             OnClick = TABPanelAuswahlClick
@@ -2696,6 +2735,7 @@ object Nemp_MainForm: TNemp_MainForm
         OnMouseDown = PanelTagCloudBrowseMouseDown
         OnResize = PanelTagCloudBrowseResize
         Ratio = 0
+        OnPaint = NewPanelPaint
         OwnerDraw = False
         object TabBtnTagCloudCategory: TSkinButton
           Tag = 1
@@ -2756,22 +2796,26 @@ object Nemp_MainForm: TNemp_MainForm
     Enabled = False
     Interval = 20
     OnTimer = BassTimerTimer
-    Left = 512
-    Top = 280
+    Left = 416
+    Top = 552
   end
   object Nemp_MainMenu: TMainMenu
     AutoHotkeys = maManual
     Images = MenuImages
-    Left = 40
-    Top = 80
+    Left = 72
+    Top = 72
     object MM_Medialibrary: TMenuItem
       Caption = '&Media library'
       OnClick = MM_MedialibraryClick
       object MM_ML_SearchDirectory: TMenuItem
-        Caption = '&Scan hard disk for audio files'
+        Caption = 'Add directory'
         ImageIndex = 3
         ShortCut = 16462
         OnClick = MM_ML_SearchDirectoryClick
+      end
+      object MM_ML_SearchDirectoryCurrentCategory: TMenuItem
+        Caption = 'Add directory to the current category'
+        OnClick = MM_ML_SearchDirectoryCurrentCategoryClick
       end
       object MM_ML_Webradio: TMenuItem
         Caption = 'Manage webradio stations'
@@ -2827,7 +2871,6 @@ object Nemp_MainForm: TNemp_MainForm
       object MM_T_CloudEditor: TMenuItem
         Caption = 'Tag cloud editor'
         ImageIndex = 19
-        ShortCut = 24660
         OnClick = PM_ML_CloudEditorClick
       end
       object N21: TMenuItem
@@ -2959,7 +3002,7 @@ object Nemp_MainForm: TNemp_MainForm
       end
       object MM_ML_ConfigureMediaLibrary: TMenuItem
         Caption = 'Configure Media library'
-        ImageIndex = 43
+        ImageIndex = 42
         OnClick = PM_ML_ConfigureMedialibraryClick
       end
       object MM_O_Wizard: TMenuItem
@@ -2984,6 +3027,7 @@ object Nemp_MainForm: TNemp_MainForm
       end
       object MM_O_View: TMenuItem
         Caption = '&View'
+        OnClick = PM_P_ViewClick
         object MM_O_JoinWindows: TMenuItem
           Action = actJoinWindows
         end
@@ -2994,29 +3038,63 @@ object Nemp_MainForm: TNemp_MainForm
         object N29: TMenuItem
           Caption = '-'
         end
-        object MM_O_CompactToggleFileOverview: TMenuItem
-          Action = actCompactToggleFileOverview
-        end
-        object MM_O_CompactToggleTitleList: TMenuItem
-          Action = actCompactToggleTitleList
+        object MM_O_SplitToggle_Playlist: TMenuItem
+          Action = actTogglePlaylist
+          ShortCut = 24656
         end
         object MM_O_CompactToggleBrowselist: TMenuItem
-          Action = actCompactToggleBrowseList
+          Action = actToggleBrowseList
+          ShortCut = 24642
         end
-        object MM_O_SplitToggleFileOverview: TMenuItem
-          Action = actSplitToggleFileOverview
+        object MM_O_CompactToggleTitleList: TMenuItem
+          Action = actToggleTitleList
+          ShortCut = 24660
         end
-        object MM_O_SplitToggle_Playlist: TMenuItem
-          Action = actSplitTogglePlaylist
-        end
-        object MM_O_SplitToggle_TitleList: TMenuItem
-          Action = actSplitToggleTitleList
-        end
-        object MM_O_SplitToggle_Browselist: TMenuItem
-          Action = actSplitToggleBrowseList
+        object MM_O_CompactToggleFileOverview: TMenuItem
+          Action = actToggleFileOverview
+          ShortCut = 24644
         end
         object MM_O_ToggleStayOnTop: TMenuItem
           Action = actToggleStayOnTop
+        end
+        object N40: TMenuItem
+          Caption = '-'
+        end
+        object MM_O_ShowCategorySelection: TMenuItem
+          Action = actToggleShowCategorySelection
+        end
+        object Showcoverinconrtolpanel1: TMenuItem
+          Action = actShowControlCover
+        end
+        object MM_O_Treeview: TMenuItem
+          Caption = 'Treeview'
+          object MM_O_TreeviewStacked: TMenuItem
+            Action = actTreeviewStacked
+          end
+          object MM_O_TreeviewSideBySide: TMenuItem
+            Action = actTreeViewSideBySide
+          end
+        end
+        object MM_O_Overview: TMenuItem
+          Caption = 'File overview'
+          object MM_O_OverviewCoverAndDetails: TMenuItem
+            Action = actFileOverviewBoth
+          end
+          object MM_O_OverviewOnlyCover: TMenuItem
+            Action = actFileOverviewOnlyCover
+          end
+          object MM_O_OverviewOnlyDetails: TMenuItem
+            Action = actFileOverviewOnlyDetails
+          end
+          object N39: TMenuItem
+            Caption = '-'
+          end
+          object MM_O_OverviewStacked: TMenuItem
+            Action = actFileOverviewStacked
+          end
+          object MM_O_OverviewSideBySide: TMenuItem
+            Action = actFileOverviewSideBySide
+          end
         end
       end
       object MM_O_Skins: TMenuItem
@@ -3124,6 +3202,10 @@ object Nemp_MainForm: TNemp_MainForm
           Caption = '&Data (cover, preferences, ...)'
           OnClick = PM_P_DirectoriesDataClick
         end
+        object MM_T_DirectoriesProgram: TMenuItem
+          Caption = 'Program directory'
+          OnClick = MM_T_DirectoriesProgramClick
+        end
       end
       object MM_T_PlaylistLog: TMenuItem
         Caption = 'Playlist log'
@@ -3138,7 +3220,7 @@ object Nemp_MainForm: TNemp_MainForm
         OnClick = MM_H_AboutClick
       end
       object MM_H_Help: TMenuItem
-        Caption = 'Documentation and user guide'
+        Caption = 'Help'
         ImageIndex = 4
         OnClick = ToolButton7Click
       end
@@ -3164,104 +3246,104 @@ object Nemp_MainForm: TNemp_MainForm
   object PlayListImageList: TImageList
     Height = 14
     Width = 14
-    Left = 1008
-    Top = 64
+    Left = 598
+    Top = 248
     Bitmap = {
-      494C01011800000A04000E000E00FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C01011900000A04000E000E00FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       000000000000360000002800000038000000620000000100200000000000C055
+      000000000000000000000000000000000000000000000000000000000000F0E7
+      E300CAAA9B00A16A50008F583D008D573D0099685100C5A99B00EEE6E3000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000DFC7BC00A365
+      4700B2805700D5B79300DBC3A600DAC3A600D2B49000AB7A520091604700D8C6
+      BD00000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000E2CBBC00A35C3B00CBA7
+      7D00D8BB9F00C39C7700B68A6200B4866000BE967200D1B39700C5A377008956
+      3D00D8C6BD000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000F4EBE400B3784900CFAA8100DABC
+      A200BE916600BA8C6200B7895F00B3845E00B1835D00B0835C00CDAA8D00C6A5
+      790095614800EFE7E40000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000DBBC9B00BF915E00E0C2A800C596
+      6C00C2916900E1CBB800FEFDFC00FFFFFE00EADCD000B4855E00B3855E00D4B5
+      9900AE7B5600C7A99B0000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000C5905100DBBC9C00D5AD8900C798
+      6C00C3956900C1936700EDDFD300FAF7F400BB8B6300B98A6300B88A6200C59D
+      7800D2B893009F69510000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000C1823C00E3C7AF00D0A27600C599
+      6B00C4976A00C4966900EEE0D400FBF7F400BF906600BE8F6500BE8F6400BE92
+      6900DFC6AA0095563B0000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000C7894100E4C9B000D0A37A00CC9D
+      7100C79A6C00C5986B0000000000FFFFFE00C3966900C1946800C2946800C398
+      6D00DFC5AB0098593B0000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000D29D5B00E0BC9F00DBB39300CFA0
+      7500CD9E7200CB9C7100DDBFA300DDBFA200C5996B00C5996B00C4986B00D1AB
+      8500D8BA9700AB6D510000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000E6C8A400CD9C6800E7CBB400D4A5
+      7A00D0A07700CF9E7400FBF8F500FBF8F500CB9E7100CB9D7100CDA17700DFC0
+      A500B98A5B00D2AE9A0000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000F9F0E700D2995900D9B28C00E6CA
+      B300D6A97D00D1A57900E2C4A800E1C3A800D0A27600D1A47700DDBDA200D0AC
+      8500B3754900F3EAE40000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000F1DCC500D1914E00D9B2
+      8C00E6CDB800E0BA9D00D7AB8500D6A98200D9B39100E1C2AB00D4AE8600B471
+      3D00E5D0BD000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000F1DDC500D59B
+      5A00D0A06A00E0BFA000E3C5AE00E3C5AE00DFBC9F00C8976200C3894800E9D5
+      BD00000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000000000000000000000000000F9F0
+      E700E9CBA700D8A16500CF914D00CD904900D09B5A00E3C6A100F7EEE4000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -3857,10 +3939,10 @@ object Nemp_MainForm: TNemp_MainForm
       0000000000000000000000000000000000000000000000000000000000000000
       000000000000000000000000000000000000424D3E000000000000003E000000
       2800000038000000620000000100010000000000100300000000000000000000
-      000000000000000000000000FFFFFF0000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000FFFFFF00E01C000000000000C00C000000000000
+      8004000000000000000000000000000000000000000000000000000000000000
+      0000000000000000020000000000000000000000000000000000000000000000
+      00000000000000008004000000000000C00C000000000000E01C000000000000
       CF9FFFF000000000C31FFF9000000000E01FFF3000000000E01FFE7000000000
       E03F80F000000000C01F00F800600100800600F800600100000200FC00F00300
       000200FC00F00300F87E00FE01F80700F8FE00FE03F80F00F8FF01FF03FC0F00
@@ -3891,292 +3973,157 @@ object Nemp_MainForm: TNemp_MainForm
     Left = 848
     Top = 56
   end
-  object DragFilesSrc1: TDragFilesSrc
-    DropEffect = deCopy
-    VerifyFiles = False
-    OnDropping = DragFilesSrc1Dropping
-    Left = 120
-    Top = 312
-  end
   object SleepTimer: TTimer
     Enabled = False
     Interval = 10000
     OnTimer = SleepTimerTimer
-    Left = 32
-    Top = 488
+    Left = 24
+    Top = 544
   end
   object BirthdayTimer: TTimer
     Enabled = False
     Interval = 60000
     OnTimer = BirthdayTimerTimer
-    Left = 88
-    Top = 488
+    Left = 96
+    Top = 544
   end
   object MenuImages: TImageList
     DrawingStyle = dsTransparent
     ShareImages = True
-    Left = 32
-    Top = 176
+    Left = 512
+    Top = 248
     Bitmap = {
-      494C01012C00300B040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
-      000000000000360000002800000040000000C0000000010020000000000000C0
+      494C01012B00300B040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      000000000000360000002800000040000000B0000000010020000000000000B0
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000FEFEFE00FEFE
+      FE00FEFEFE00FEFEFE00FDFDFD00FBFBFB00FBFBFB00FCFCFC00FEFEFE00FEFE
+      FE00FEFEFE00FEFEFE0000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000FEFEFE00FEFEFE00FBFB
+      FB00DADAD900B6B5B500B4B4B400A9A6A500A8A4A300B5B4B300B6B5B500D3D3
+      D300F9F9F900FEFEFE00FEFEFE00000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      000000000000000000000000000000000000000000006CA7D0004094D0003F92
-      CF003F92CE003E92CF003E94D0006CA7D0000000000000000000000000000000
-      00000000000000000000DCDCDC00CCCCCC00CCCCCC00DDDDDD00000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      000000000000000000000000000000000000000000003B93D100A9F9FF008FF0
-      FF008FEFFF008DF0FF00D2FFFF003E94D0000000000000000000000000000000
-      000000000000000000006D98C1004182BD003D80BB00628FBA00DEDEDE000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000C0000000C000000000
       000000C0000000C000000000000000C0000000C000000000000000C0000000C0
-      00000000000000C0000000C00000000000000000000000000000000000000000
-      0000CCCCCC00CCCCCC00CCCCCC00CCCCCC00CCCCCC003390D100B7F3FF0077E0
-      FD0077E0FD0076E0FE00DAFEFF003B92CF0000000000F4F4F400F5F5F500F5F5
-      F500F5F5F500F8F8F8004D8DC30057A4D60059A0D3004C8FC5006490BA00DFDF
-      DF00F5F5F5000000000000000000000000000000000000000000000000000000
+      00000000000000C0000000C000000000000000000000FEFEFE00E8E8E800807D
+      7C0075706E00C4C3C200DAD8D800CACBCA00CAC9C800D7D6D500C6C6C6007C7A
+      7900706F6E00DEDEDE00FEFEFE00FEFEFE000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      00008D8C8C008D8C8C008D8C8C008D8C8C008D8C8C00308FD200CEF7FF00B5EE
-      FE00DBF9FF00DDFBFF00E2FFFF003D94D000D0D0D000AFC1CD00B0C1CD00B0C1
-      CC00B2C2CD00B9C5CD005291C700B7E6FA00529FD300579FD2004B8EC5006690
-      B900B2C3CE00D1D1D10000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000E3E3E3008A898800A8A7
+      A600A1A19F008986870091908F008D8988008C8B8800939290008C8B8900A0A0
+      9F00A3A2A10089868500D8D8D800000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000C0000000C000000000
       000000C0000000C000000000000000C0000000C000000000000000C0000000C0
-      00000000000000C0000000C00000000000000000000000000000000000000000
-      00008D8C8C00000000000000000000000000000000003492D300DCFDFF00DAFB
-      FF00348DCD003991CE003D94D0007EB8E0004F9DD2004398D2004094D0003E92
-      CF003E92CE003E92CF00498DC5004D99CE00B4E3F900509ED300539DD3003080
-      C2003D9BDA004BA0DA00D6D6D600F8F8F8000000000000000000000000000000
+      00000000000000C0000000C00000000000000000000093929100B7B6B5006C6A
+      68006E6A6900CACAC900E1E1E000CAC9C800C8C6C800DDDCDB00D1CFCF007978
+      760065626000B2B1B00093918F00000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
       00000000000000000000E8A20000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000000000009F9D9C009A989700A4A3
+      A200A6A4A3008E8D8C0090918E008C8987008B88870092939000908F8E00A4A3
+      A200A19F9E0097939200A4A3A200000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      00008D8C8C0000000000000000000000000000000000539FD4003C93D0003B92
-      CF005CA0D000CCCCCC00CCCCCC00DCDCDC004499D2003F94D000ABFBFF009BF3
-      FF0092F1FF0093F1FF0093F3FF0066AED7004B96CD00AFE1F90081AFD000BCBF
-      B9008E8178008E827A009B948E00C4C3C2000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       000000000000000000000000000000000000000000006BD7BF006BD7BF000000
       00006BD7BF006BD7BF00000000006BD7BF006BD7BF00000000006BD7BF006BD7
-      BF00000000006BD7BF006BD7BF00000000000000000000000000000000000000
-      00008D8C8C000000000000000000000000000000000075ABD0003E93CF003E91
-      CE003E92CE003E92CF003E94D0006EA8D0004397D10056ACDD008EDAF500A2ED
-      FF0082E5FE0084E5FE0085E7FF0088EBFF0061A9D60057A7D700E0DCD800D4CD
-      CC00D5D2D100EEEBE900EBE7E600918E8A000000000000000000000000000000
+      BF00000000006BD7BF006BD7BF000000000000000000AAA8A700B1B0AF00726F
+      6E0066646100B5B3B000C4C3C200B2B1B200B2B1B000C0BFBE00B8B7B600706E
+      6B0069686600AAABAA00B7B5B300000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      000000000000000000000000000000000000D8D8D800CCCCCC00CCCCCC00CCCC
-      CC008D8C8C00CCCCCC00D1D1D10000000000000000003C93D100A9F9FF008FF0
-      FF008FEFFF008DF0FF00D2FFFF003E94D0004296D10071C4EA006CBCE600BBF2
-      FF0075DEFD0077DEFC0078DFFD007DE1FE007EE4FF0078E6FF00C1B4AF00DCD8
-      D800CFCDCC00918C890097908B009E948D000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000ABAAA700908D8B008886
+      8500A1A09F00B1B0AF00AEACAA00B9B9B700BCBDB900B2B1B000B2B1B000A4A6
+      A400817F800088878500B1B0AF00000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
       00000000000000000000000000000000000000000000E8A20000000000000000
       000000000000000000000000000000000000000000006BD7BF006BD7BF000000
       00006BD7BF006BD7BF00000000006BD7BF006BD7BF00000000006BD7BF006BD7
-      BF00000000006BD7BF006BD7BF000000000063A4D1004397D1004094D0003C92
-      D0003991D0003B92D1004799D200CCCCCC00CCCCCC003490D100B7F3FF0077E0
-      FD0077E0FD0076E0FE00DAFEFF003B92CF004095D00090DDF80044A0D800DDFC
-      FF00DAFAFF00DBF9FF00DEFAFF0074DCFC0075DCFC0070DFFF00A1938E00D9D5
-      D400C3BFBE009B95910070C8F9009DBCD1000000000000000000000000000000
+      BF00000000006BD7BF006BD7BF0000000000000000009F9E9D00A19F9E009F9E
+      9C00B2B1B100BBB9B700BFBEBC00C2C0BD00C3C2BE00C3C2BF00C2C0BE00BDBC
+      B900A7A8A4009C9B9B00AAA8A700000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000004397D10054A6D90082E3FD0086EB
-      FF0083EAFF0085ECFF0051B3E4008D8C8C008D8C8C003190D200CEF7FF00B5EE
-      FE00DBF9FF00DDFBFF00E2FFFF003D94D0003E93CF00B2F6FF0051ACDE00358A
-      CA00358ACA00358ACA00368ACA005BBDE9006ED9FC0066DAFF00A3958F00E3DF
-      DE00B1AFAC00A29D9900A69D9700ACA09800000000000000000000000000E8A2
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000A7A6A50095939100A6A4
+      A200A7A6A300AAA8A700ACABAA00AFAEAC00B0AFAC00B0AFAC00AEACAC00ABAB
+      A900AFAEAB009B989800ACACAA00000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      000000000000000000000000000000000000000000000000000000000000E8A2
       0000000000000000000000000000000000000000000000000000000000000000
       00000000000000000000000000000000000000000000277FFF00277FFF000000
       0000000000000000000000000000277FFF00277FFF0000000000277FFF00277F
-      FF0000000000277FFF00277FFF00000000004095D000A0E5FB0048A7DD00DDFA
-      FF00DAF9FF00DBFAFF00DDFCFF0059A0D200000000003692D200DCFDFF00DAFB
-      FF00348DCD003991CE003D94D0007CB7DF003D92CF00B8F3FF0077DFFE007BE0
-      FE007CE1FE007CE1FF007DE2FF0052ABDD0055BAE900D9FAFF00BCC7C900D4CC
-      C800F3F0EE00E3E0DD00D1CAC4009FA4A8000000000000000000000000000000
+      FF0000000000277FFF00277FFF00000000000000000099979600ABAAA800A7A6
+      A400AAA9A700AEACAB00B0AFAE00B2B1AF00B2B2B000B2B1AF00B0B0AE00AFAE
+      AB00ACABA900B2B1AE00A1A09F00000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000E8A200000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000003D93CF00C1F7FF0051B5E5002F89
-      CA002F8ACB00328CCC003992CF003F97D300000000007EB8E1003D94D0003D94
-      D00081BAE0000000000000000000000000003C92CF00C0F3FF0070D9FB0073DA
-      FB0074DAFB0074DAFB0074DBFB0076DEFD004FA9DD00358CCC00388ECC00899D
-      AD00B1A69F00B5AAA20098A6B00091BCDA000000000000000000000000000000
+      000000000000000000000000000000000000000000009F9D9C00C2C0BD00B6B5
+      B300B8B7B600BBB9B800BDBCB900BEBDBB00BEBDBC00BEBDBB00BDBCBB00BCBB
+      B800BBB9B700C4C3BF00B0AFAE00000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       00000000000000000000000000000000000000000000277FFF00277FFF000000
       0000000000000000000000000000277FFF00277FFF0000000000000000000000
-      000000000000277FFF00277FFF00000000003B92CF00D2F9FF00B6F0FF00DCFD
-      FF00DFFFFF00E5FFFF003E95D000000000000000000000000000000000000000
-      0000000000000000000000000000000000003B92CF00CAF6FF0069D5F9006CD5
-      F9006AD4F90069D4F90069D5F9006AD6FA006BD8FB006BD9FD0069DAFE0063D9
-      FF00D2FBFF003392D300D8E6EF00000000000000000000000000000000000000
+      000000000000277FFF00277FFF000000000000000000C2C1C000C8C8C600CBCA
+      C900C9C6C500CAC9C800CBCAC900CBCBCA00CCCBCA00CBCBCA00CBCAC900CAC9
+      C800CBCACB00CFCECC00BBBAB900000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000003D94D000DCFDFF00DAFBFF00358F
-      CD003A92CF003E95D0007DB8E000000000000000000000000000000000000000
-      0000000000000000000000000000000000003B92CF00D5F7FF0060D1F90061D0
-      F800B4EBFD00D9F6FF00DAF8FF00DAF8FF00DAF9FF00DBF9FF00DAF9FF00D9FA
-      FF00DDFDFF003C94D100D7E9F500000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      00000000000000000000000000000000000000000000F9F8F800C6C6C400DEDD
+      DC00E3E3E200E0E0DE00DEDEDD00E0DDDE00E0E0DE00E0DEDE00E1E0E000E4E3
+      E300E3E2E200C5C5C400F3F3F300000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000241CED00241CED0000000000000000000000
-      0000000000000000000000000000000000004D9ED4003D94D0003D94D00052A0
-      D500000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000003D94D000DCFCFF00D8F7FF00D8F7
-      FF00DBFAFF00358ECD003991CE003A92CF003A92CF003A92CF003A92CF003A92
-      CF003D94D00051A0D50000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000F9F9F900DFDF
+      DF00E7E7E600F7F7F700FCFCFC00FDFDFD00FDFDFD00FCFCFC00F8F8F800E9E8
+      E800DEDDDC00F6F6F50000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
-      000000000000000000000000000000000000000000003D94D0003A92CF003A92
-      CF003D94D00055A2D500DFEDF700DAEAF600D9EAF600D9EAF600D9EAF600D9EA
-      F600D6E9F5000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000F8F8F800EFEFEF00EBEBEB00E2E2E200E1E1E100EAEAEA00EEEDED00F6F6
+      F600000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
+      0000000000000000000000000000000000000000000000000000000000000000
       0000FDFDFE00FAFAFB00F6F6F800F4F4F600F5F5F700F9F9FA00FCFCFD000000
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -5457,16 +5404,12 @@ object Nemp_MainForm: TNemp_MainForm
       000038D3DC000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
       000000000000000000000000000000000000424D3E000000000000003E000000
-      2800000040000000C00000000100010000000000000600000000000000000000
-      000000000000000000000000FFFFFF0000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      00000000000000000000000000000000FFFFFFFFFF80FC3FFFFFFFFFFF80FC1F
-      EDB79249F0008007EDB7FFFFF0000003E8B79249F7800000E8B7FFFFF7800000
-      E8B79249F7800000ED17FFFF01800000ED17924900000000C517FFFF00000000
-      C5A39E4900800000C5A3FFFF00870000EDA39E7901FF0001EDB7FFFF01FF0001
-      FFFFFE7F0FFF0003FFFFFFFFFFFF8007F01FFFFFF003E007C007FFFFC0008001
+      2800000040000000B00000000100010000000000800500000000000000000000
+      000000000000000000000000FFFFFF00FFFFFFFFC0030000FFFFFFFF80010000
+      EDB7924980000000EDB7FFFF80010000E8B7924980010000E8B7FFFF80010000
+      E8B7924980010000ED17FFFF80010000ED17924980010000C517FFFF80010000
+      C5A39E4980010000C5A3FFFF80010000EDA39E7980010000EDB7FFFF80010000
+      FFFFFE7FC0030000FFFFFFFFF00F0000F01FFFFFF003E007C007FFFFC0008001
       8003FC7F800000008003F00F800080000001C007C00080010001C007F0018001
       00018003F00380E100018003E00F80E100018003E01F800100018003C03F8001
       00018003C07F83818001C003C0FF80018003C00780FF8001C007E00F83FFC001
@@ -5514,12 +5457,12 @@ object Nemp_MainForm: TNemp_MainForm
       'All supported files|*.m3u;*.m3u8;*.pls;*.npl;*.asx;*.wax|m3u-lis' +
       'ts|*.m3u|m3u8-lists (unicode-capable)|*.m3u8|pls-lists|*.pls|Nem' +
       'p playlists|*.npl|WindowsMedia|*.asx;*.wax'
-    Left = 961
-    Top = 1
+    Left = 1015
+    Top = 8
   end
   object PlaylistDateienOpenDialog: TOpenDialog
     Options = [ofHideReadOnly, ofAllowMultiSelect, ofEnableSizing]
-    Left = 872
+    Left = 784
     Top = 8
   end
   object OpenDialog1: TOpenDialog
@@ -5537,21 +5480,21 @@ object Nemp_MainForm: TNemp_MainForm
     FilterIndex = 2
     Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
     OnTypeChange = PlayListSaveDialogTypeChange
-    Left = 921
-    Top = 9
+    Left = 909
+    Top = 8
   end
   object SaveDialog1: TSaveDialog
     DefaultExt = 'gmp'
     Filter = 'Nemp medialibrary (*.gmp)|*.gmp'
     FilterIndex = 0
-    Left = 64
+    Left = 112
     Top = 312
   end
   object Medialist_View_PopupMenu: TPopupMenu
     Images = MenuImages
     OnPopup = Medialist_View_PopupMenuPopup
-    Left = 480
-    Top = 120
+    Left = 72
+    Top = 224
     object PM_ML_Enqueue: TMenuItem
       Caption = 'Enqueue (at the end of the playlist)'
       OnClick = PM_ML_FilesPlayEnqueueClick
@@ -5621,25 +5564,25 @@ object Nemp_MainForm: TNemp_MainForm
         GroupIndex = 1
       end
       object PM_ML_SortFilename: TMenuItem
-        Tag = 12
+        Tag = 16
         Caption = 'Filename'
         GroupIndex = 1
         OnClick = AnzeigeSortMENUClick
       end
       object PM_ML_SortPathFilename: TMenuItem
-        Tag = 10
+        Tag = 18
         Caption = 'Path && Filename'
         GroupIndex = 1
         OnClick = AnzeigeSortMENUClick
       end
       object PM_ML_SortLyricsexists: TMenuItem
-        Tag = 15
+        Tag = 28
         Caption = 'Lyrics exists'
         GroupIndex = 1
         OnClick = AnzeigeSortMENUClick
       end
       object PM_ML_SortGenre: TMenuItem
-        Tag = 14
+        Tag = 9
         Caption = 'Genre'
         GroupIndex = 1
         OnClick = AnzeigeSortMENUClick
@@ -5649,19 +5592,19 @@ object Nemp_MainForm: TNemp_MainForm
         GroupIndex = 1
       end
       object PM_ML_SortDuration: TMenuItem
-        Tag = 3
+        Tag = 8
         Caption = 'Duration'
         GroupIndex = 1
         OnClick = AnzeigeSortMENUClick
       end
       object PM_ML_SortFilesize: TMenuItem
-        Tag = 9
+        Tag = 19
         Caption = 'Filesize'
         GroupIndex = 1
         OnClick = AnzeigeSortMENUClick
       end
       object PM_ML_bpm: TMenuItem
-        Tag = 28
+        Tag = 27
         Caption = 'BPM (Beats per minute)'
         GroupIndex = 1
         OnClick = AnzeigeSortMENUClick
@@ -5700,6 +5643,10 @@ object Nemp_MainForm: TNemp_MainForm
     object PM_MLView_ChangeCategory: TMenuItem
       Caption = 'Change category of selected files'
       OnClick = PM_MLView_ChangeCategoryClick
+    end
+    object PM_MLView_RemoveFromCategory: TMenuItem
+      Caption = 'Remove selected files from current category'
+      OnClick = PM_MLView_RemoveFromCategoryClick
     end
     object N72: TMenuItem
       Caption = '-'
@@ -5812,12 +5759,6 @@ object Nemp_MainForm: TNemp_MainForm
         OnClick = PM_ML_SetmarkerClick
       end
     end
-    object PM_ML_GetLyrics: TMenuItem
-      Caption = 'Get lyrics for selected files'
-      ImageIndex = 25
-      ShortCut = 16460
-      OnClick = PM_ML_GetLyricsClick
-    end
     object PM_ML_GetTags: TMenuItem
       Caption = 'Get additional tags for selected files'
       ImageIndex = 18
@@ -5923,8 +5864,8 @@ object Nemp_MainForm: TNemp_MainForm
   object PlayListPOPUP: TPopupMenu
     Images = MenuImages
     OnPopup = PlayListPOPUPPopup
-    Left = 624
-    Top = 56
+    Left = 520
+    Top = 128
     object PM_PL_AddFiles: TMenuItem
       Caption = 'Add files'
       OnClick = MM_PL_FilesClick
@@ -6017,7 +5958,6 @@ object Nemp_MainForm: TNemp_MainForm
     end
     object PM_PL_ClearPlaylist: TMenuItem
       Caption = 'Clear'
-      Visible = False
       OnClick = PM_PL_ClearPlaylistClick
     end
     object PM_PL_DeleteSelected: TMenuItem
@@ -6219,7 +6159,7 @@ object Nemp_MainForm: TNemp_MainForm
     Images = TaskBarImages
     OnPopup = TNAMenuPopup
     Left = 993
-    Top = 408
+    Top = 417
     object PM_TNA_PlayPause: TMenuItem
       Caption = 'Pause'
       ImageIndex = 1
@@ -6261,8 +6201,8 @@ object Nemp_MainForm: TNemp_MainForm
     AutoHotkeys = maManual
     Images = MenuImages
     OnPopup = Player_PopupMenuPopup
-    Left = 624
-    Top = 114
+    Left = 520
+    Top = 178
     object PM_P_Preferences: TMenuItem
       Caption = 'Preferences'
       ImageIndex = 5
@@ -6275,6 +6215,7 @@ object Nemp_MainForm: TNemp_MainForm
     end
     object PM_P_View: TMenuItem
       Caption = 'View'
+      OnClick = PM_P_ViewClick
       object PM_P_JoinWindows: TMenuItem
         Action = actJoinWindows
       end
@@ -6285,29 +6226,63 @@ object Nemp_MainForm: TNemp_MainForm
       object N31: TMenuItem
         Caption = '-'
       end
-      object PM_P_CompactToggleFileoverview: TMenuItem
-        Action = actCompactToggleFileOverview
-      end
-      object PM_P_CompactToggleTitlelist: TMenuItem
-        Action = actCompactToggleTitleList
+      object PM_P_SplitTogglePlaylist: TMenuItem
+        Action = actTogglePlaylist
+        ShortCut = 24656
       end
       object PM_P_CompactToggleBrowseList: TMenuItem
-        Action = actCompactToggleBrowseList
+        Action = actToggleBrowseList
+        ShortCut = 24642
       end
-      object PM_P_SplitToggleFileOverview: TMenuItem
-        Action = actSplitToggleFileOverview
+      object PM_P_CompactToggleTitlelist: TMenuItem
+        Action = actToggleTitleList
+        ShortCut = 24660
       end
-      object PM_P_SplitTogglePlaylist: TMenuItem
-        Action = actSplitTogglePlaylist
-      end
-      object PM_P_SplitToggleTitlelist: TMenuItem
-        Action = actSplitToggleTitleList
-      end
-      object PM_P_SplitToggleBrowseList: TMenuItem
-        Action = actSplitToggleBrowseList
+      object PM_P_CompactToggleFileoverview: TMenuItem
+        Action = actToggleFileOverview
+        ShortCut = 24644
       end
       object PM_P_ToggleStayOnTop: TMenuItem
         Action = actToggleStayOnTop
+      end
+      object N34: TMenuItem
+        Caption = '-'
+      end
+      object PM_P_ShowCategorySelection: TMenuItem
+        Action = actToggleShowCategorySelection
+      end
+      object Showcoverinconrtolpanel2: TMenuItem
+        Action = actShowControlCover
+      end
+      object PM_P_TreeView: TMenuItem
+        Caption = 'Treeview'
+        object PM_P_TreeViewStacked: TMenuItem
+          Action = actTreeviewStacked
+        end
+        object PM_P_TreeViewSideBySide: TMenuItem
+          Action = actTreeViewSideBySide
+        end
+      end
+      object PM_P_FileOverview: TMenuItem
+        Caption = 'File overview'
+        object PM_P_OverviewCoverAndDetails: TMenuItem
+          Action = actFileOverviewBoth
+        end
+        object PM_P_OverviewOnlyCover: TMenuItem
+          Action = actFileOverviewOnlyCover
+        end
+        object PM_P_OverviewOnlyDetails: TMenuItem
+          Action = actFileOverviewOnlyDetails
+        end
+        object Onlydetails2: TMenuItem
+          Caption = '-'
+        end
+        object PM_P_OverviewStacked: TMenuItem
+          Action = actFileOverviewStacked
+        end
+        object PM_P_OverviewSideBySide: TMenuItem
+          Action = actFileOverviewSideBySide
+        end
       end
     end
     object PM_P_FormBuilder: TMenuItem
@@ -6425,6 +6400,10 @@ object Nemp_MainForm: TNemp_MainForm
         Caption = 'Data (cover, preferences, ...)'
         OnClick = PM_P_DirectoriesDataClick
       end
+      object PM_P_DirectoriesProgram: TMenuItem
+        Caption = 'Program directory'
+        OnClick = MM_T_DirectoriesProgramClick
+      end
     end
     object PM_P_PlaylistLog: TMenuItem
       Caption = 'Playlist log'
@@ -6447,7 +6426,7 @@ object Nemp_MainForm: TNemp_MainForm
         OnClick = MM_H_CheckForUpdatesClick
       end
       object PM_P_Help: TMenuItem
-        Caption = 'Documentation and user guide'
+        Caption = 'Help'
         ImageIndex = 4
         OnClick = ToolButton7Click
       end
@@ -6455,12 +6434,12 @@ object Nemp_MainForm: TNemp_MainForm
   end
   object VST_ColumnPopup: TPopupMenu
     OnPopup = VST_ColumnPopupPopup
-    Left = 388
-    Top = 313
+    Left = 241
+    Top = 388
   end
   object PopupPlayPause: TPopupMenu
-    Left = 253
-    Top = 560
+    Left = 187
+    Top = 610
     object PM_PlayFiles: TMenuItem
       Caption = 'Play files'
       OnClick = PM_PlayFilesClick
@@ -6476,8 +6455,8 @@ object Nemp_MainForm: TNemp_MainForm
   end
   object PopupStop: TPopupMenu
     OnPopup = PopupStopPopup
-    Left = 325
-    Top = 570
+    Left = 267
+    Top = 610
     object PM_StopNow: TMenuItem
       Caption = 'Stop'
       OnClick = PM_StopNowClick
@@ -6489,8 +6468,8 @@ object Nemp_MainForm: TNemp_MainForm
   end
   object PopupRepeat: TPopupMenu
     OnPopup = PopupRepeatPopup
-    Left = 389
-    Top = 570
+    Left = 338
+    Top = 610
     object PM_RepeatAll: TMenuItem
       Caption = 'Repeat all'
       RadioItem = True
@@ -6535,11 +6514,11 @@ object Nemp_MainForm: TNemp_MainForm
     PopupMenu = TNAMenu
     OnClick = NempTrayIconClick
     Left = 992
-    Top = 448
+    Top = 465
   end
   object TaskBarImages: TImageList
-    Left = 1008
-    Top = 248
+    Left = 992
+    Top = 320
     Bitmap = {
       494C010108006C07040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
@@ -6959,19 +6938,19 @@ object Nemp_MainForm: TNemp_MainForm
     Enabled = False
     Interval = 250
     OnTimer = HeadSetTimerTimer
-    Left = 512
-    Top = 344
+    Left = 344
+    Top = 552
   end
   object RefreshCoverFlowTimer: TTimer
     Enabled = False
     Interval = 300
     OnTimer = RefreshCoverFlowTimerTimer
-    Left = 232
-    Top = 336
+    Left = 872
+    Top = 560
   end
   object PopupRepeatAB: TPopupMenu
-    Left = 448
-    Top = 568
+    Left = 422
+    Top = 610
     object PM_SetA: TMenuItem
       Caption = 'Set start point (A)'
       OnClick = PM_ABRepeatSetAClick
@@ -6991,20 +6970,20 @@ object Nemp_MainForm: TNemp_MainForm
   object WalkmanModeTimer: TTimer
     Interval = 60000
     OnTimer = WalkmanModeTimerTimer
-    Left = 160
-    Top = 488
+    Left = 194
+    Top = 544
   end
   object CoverFlowRefreshViewTimer: TTimer
     Enabled = False
     Interval = 50
     OnTimer = CoverFlowRefreshViewTimerTimer
-    Left = 232
-    Top = 288
+    Left = 872
+    Top = 608
   end
   object PopupEditExtendedTags: TPopupMenu
     OnPopup = PopupEditExtendedTagsPopup
-    Left = 760
-    Top = 528
+    Left = 744
+    Top = 496
     object PM_TagAudiofile: TMenuItem
       Caption = 'This audio file'
       Enabled = False
@@ -7044,6 +7023,30 @@ object Nemp_MainForm: TNemp_MainForm
     object pm_TagDetails: TMenuItem
       Caption = 'Properties'
       OnClick = pm_TagDetailsClick
+    end
+    object N37: TMenuItem
+      Caption = '-'
+    end
+    object pm_FO_FileOverview: TMenuItem
+      Caption = 'File overview'
+      object pm_FO_CoverAndDetails: TMenuItem
+        Action = actFileOverviewBoth
+      end
+      object pm_FO_OnlyCover: TMenuItem
+        Action = actFileOverviewOnlyCover
+      end
+      object pm_FO_OnlyDetails: TMenuItem
+        Action = actFileOverviewOnlyDetails
+      end
+      object N41: TMenuItem
+        Caption = '-'
+      end
+      object pm_FO_Stacked: TMenuItem
+        Action = actFileOverviewStacked
+      end
+      object pm_FO_SideBySide: TMenuItem
+        Action = actFileOverviewSideBySide
+      end
     end
   end
   object QuickSearchHistory_PopupMenu: TPopupMenu
@@ -7117,11 +7120,11 @@ object Nemp_MainForm: TNemp_MainForm
       OnClick = pmQuickSeachHistoryClick
     end
   end
-  object Medialist_Browse_PopupMenu: TPopupMenu
+  object Medialist_Collection_PopupMenu: TPopupMenu
     Images = MenuImages
-    OnPopup = Medialist_Browse_PopupMenuPopup
-    Left = 400
-    Top = 46
+    OnPopup = Medialist_Collection_PopupMenuPopup
+    Left = 72
+    Top = 174
     object PM_ML_EnqueueBrowse: TMenuItem
       Caption = 'Enqueue (at the end of the playlist)'
       OnClick = PM_ML_CollectionPlayEnqueueClick
@@ -7139,12 +7142,29 @@ object Nemp_MainForm: TNemp_MainForm
     object N27: TMenuItem
       Caption = '-'
     end
+    object PM_ML_SaveAsNewFavorite: TMenuItem
+      Caption = 'Save current playlist as new favorite'
+      OnClick = PM_PLM_SaveAsNewFavoriteClick
+    end
+    object PM_ML_EditFavorites: TMenuItem
+      Tag = -1
+      Caption = 'Edit favorite playlists'
+      OnClick = PM_PLM_EditFavouritesClick
+    end
+    object PM_ML_FavPlaylistSeparator: TMenuItem
+      Caption = '-'
+    end
     object PM_ML_ChangeCategory: TMenuItem
-      Caption = 'Change Category of selected files'
+      Caption = 'Change category'
       OnClick = PM_ML_ChangeCategoryClick
+    end
+    object PM_ML_RemoveFromCategory: TMenuItem
+      Caption = 'Remove from category'
+      OnClick = PM_ML_RemoveFromCategoryClick
     end
     object PM_ML_SortLayerBy: TMenuItem
       Caption = 'Sort layer by'
+      ImageIndex = 11
       object PM_ML_SortLayerByName: TMenuItem
         Caption = 'Name'
         OnClick = SortierAuswahl1POPUPClick
@@ -7207,6 +7227,7 @@ object Nemp_MainForm: TNemp_MainForm
     end
     object PM_ML_SortPlaylistsBy: TMenuItem
       Caption = 'Sort playlists by'
+      ImageIndex = 11
       object PM_ML_SortPlaylistsByFilename: TMenuItem
         Caption = 'Filename'
         OnClick = PM_ML_SortPlaylistsDescendingClick
@@ -7237,18 +7258,34 @@ object Nemp_MainForm: TNemp_MainForm
       end
     end
     object PM_ML_ConfigureMedialibrary: TMenuItem
-      Caption = 'Configure Media library'
+      Caption = 'Configure media library'
       ImageIndex = 42
       OnClick = PM_ML_ConfigureMedialibraryClick
+    end
+    object PM_ML_ShowCategorySelection: TMenuItem
+      Action = actToggleShowCategorySelection
+    end
+    object PM_ML_Treeview: TMenuItem
+      Caption = 'Treeview'
+      object PM_ML_TreeViewStacked: TMenuItem
+        Action = actTreeviewStacked
+      end
+      object PM_ML_TreeViewSideBySide: TMenuItem
+        Action = actTreeViewSideBySide
+      end
     end
     object N16: TMenuItem
       Caption = '-'
     end
     object PM_ML_SearchDirectory: TMenuItem
-      Caption = 'Search directory for new files'
+      Caption = 'Add directory'
       ImageIndex = 3
       ShortCut = 16462
       OnClick = MM_ML_SearchDirectoryClick
+    end
+    object PM_ML_SearchDirectoryCurrentCategory: TMenuItem
+      Caption = 'Add directory to the current category'
+      OnClick = MM_ML_SearchDirectoryCurrentCategoryClick
     end
     object PM_ML_Medialibrary: TMenuItem
       Caption = 'Media library'
@@ -7289,7 +7326,6 @@ object Nemp_MainForm: TNemp_MainForm
       object PM_ML_CloudEditor: TMenuItem
         Caption = 'Tag cloud editor'
         ImageIndex = 19
-        ShortCut = 24660
         OnClick = PM_ML_CloudEditorClick
       end
     end
@@ -7303,13 +7339,21 @@ object Nemp_MainForm: TNemp_MainForm
       ShortCut = 16430
       OnClick = PM_ML_RemoveSelectedPlaylistsClick
     end
+    object PM_ML_ResetTagCloudSeparator: TMenuItem
+      Caption = '-'
+    end
+    object PM_ML_ResetTagCloud: TMenuItem
+      Caption = 'Reset tag cloud'
+      ShortCut = 27
+      OnClick = PM_ML_ResetTagCloudClick
+    end
   end
   object PopupTools: TPopupMenu
     AutoHotkeys = maManual
     Images = MenuImages
     OnPopup = Player_PopupMenuPopup
-    Left = 32
-    Top = 546
+    Left = 24
+    Top = 610
     object PM_T_ShutDown: TMenuItem
       Caption = 'Shutdown'
       ImageIndex = 16
@@ -7368,8 +7412,8 @@ object Nemp_MainForm: TNemp_MainForm
     end
   end
   object PopupHeadset: TPopupMenu
-    Left = 176
-    Top = 560
+    Left = 99
+    Top = 610
     object PM_H_EnqueueEndOfPlaylist: TMenuItem
       Caption = 'Enqueue (at the end of the playlist)'
       OnClick = InsertHeadsetToPlaylistClick
@@ -7392,8 +7436,8 @@ object Nemp_MainForm: TNemp_MainForm
   end
   object PlaylistManagerPopup: TPopupMenu
     OnPopup = PlaylistManagerPopupPopup
-    Left = 704
-    Top = 24
+    Left = 520
+    Top = 80
     object PM_PLM_Default: TMenuItem
       Tag = -1
       Caption = 'Default playlist'
@@ -7448,12 +7492,12 @@ object Nemp_MainForm: TNemp_MainForm
     TabProperties = [CustomizedPreview]
     OnThumbPreviewRequest = NempTaskbarManagerThumbPreviewRequest
     OnThumbButtonClick = fspTaskbarManagerThumbButtonClick
-    Left = 824
-    Top = 164
+    Left = 993
+    Top = 271
   end
   object PlaylistVST_HeaderPopup: TPopupMenu
-    Left = 744
-    Top = 116
+    Left = 653
+    Top = 80
     object pmShowColumnIndex: TMenuItem
       Caption = 'Show column "Index"'
       OnClick = pmShowColumnIndexClick
@@ -7461,17 +7505,17 @@ object Nemp_MainForm: TNemp_MainForm
   end
   object DummyImageList: TImageList
     Width = 128
-    Left = 480
-    Top = 16
+    Left = 424
+    Top = 248
   end
   object Medialist_Browse_Categories_PopupMenu: TPopupMenu
     OnPopup = Medialist_Browse_Categories_PopupMenuPopup
-    Left = 456
-    Top = 180
+    Left = 281
+    Top = 174
   end
-  object ActionList1: TActionList
-    Left = 112
-    Top = 70
+  object ActionListLayout: TActionList
+    Left = 296
+    Top = 38
     object actJoinWindows: TAction
       Caption = 'Join windows'
       OnExecute = actJoinSplitWindowsExecute
@@ -7481,45 +7525,101 @@ object Nemp_MainForm: TNemp_MainForm
       Caption = 'Split windows'
       OnExecute = actJoinSplitWindowsExecute
     end
-    object actCompactToggleFileOverview: TAction
+    object actToggleFileOverview: TAction
       Caption = 'Show file overview'
-      OnExecute = actCompactToggleFileOverviewExecute
+      OnExecute = actToggleFileOverviewExecute
     end
-    object actCompactToggleTitleList: TAction
+    object actToggleTitleList: TAction
       Caption = 'Show title list'
-      OnExecute = actCompactToggleTitleListExecute
+      OnExecute = actToggleTitleListExecute
     end
-    object actCompactToggleBrowseList: TAction
+    object actToggleBrowseList: TAction
       Caption = 'Show treeview/coverflow/tagcloud'
-      OnExecute = actCompactToggleBrowseListExecute
+      OnExecute = actToggleBrowseListExecute
     end
-    object actSplitToggleFileOverview: TAction
-      Caption = 'Show file overview'
-      OnExecute = actSplitToggleFileOverviewExecute
-    end
-    object actSplitTogglePlaylist: TAction
+    object actTogglePlaylist: TAction
       Caption = 'Show playlist'
-      OnExecute = actSplitTogglePlaylistExecute
-    end
-    object actSplitToggleTitleList: TAction
-      Caption = 'Show title list'
-      OnExecute = actSplitToggleTitleListExecute
-    end
-    object actSplitToggleBrowseList: TAction
-      Caption = 'Show treeview/coverflow/tagcloud'
-      OnExecute = actSplitToggleBrowseListExecute
+      OnExecute = actTogglePlaylistExecute
     end
     object actToggleStayOnTop: TAction
       Caption = 'Stay on top'
       ShortCut = 16468
       OnExecute = actToggleStayOnTopExecute
     end
+    object actTreeviewStacked: TAction
+      Caption = 'Stacked'
+      OnExecute = actTreeviewStackedExecute
+    end
+    object actTreeViewSideBySide: TAction
+      Caption = 'Side by side'
+      OnExecute = actTreeViewSideBySideExecute
+    end
+    object actToggleShowCategorySelection: TAction
+      Caption = 'Show category selection'
+      OnExecute = actToggleShowCategorySelectionExecute
+    end
+    object actFileOverviewBoth: TAction
+      Caption = 'Cover/lyrics and details'
+      OnExecute = actFileOverviewBothExecute
+    end
+    object actFileOverviewOnlyCover: TAction
+      Caption = 'Only cover/lyrics'
+      OnExecute = actFileOverviewOnlyCoverExecute
+    end
+    object actFileOverviewOnlyDetails: TAction
+      Caption = 'Only details'
+      OnExecute = actFileOverviewOnlyDetailsExecute
+    end
+    object actFileOverviewStacked: TAction
+      Caption = 'Stacked'
+      OnExecute = actFileOverviewStackedExecute
+    end
+    object actFileOverviewSideBySide: TAction
+      Caption = 'Side by side'
+      OnExecute = actFileOverviewSideBySideExecute
+    end
+    object actShowControlCover: TAction
+      Caption = 'Show cover in control panel'
+      OnExecute = actShowControlCoverExecute
+    end
   end
   object SplitWindowTimer: TTimer
     Enabled = False
     Interval = 250
     OnTimer = SplitWindowTimerTimer
-    Left = 112
-    Top = 136
+    Left = 720
+    Top = 608
+  end
+  object ApplicationEvents1: TApplicationEvents
+    OnHelp = ApplicationEvents1Help
+    Left = 672
+    Top = 416
+  end
+  object Medialist_Category_PopupMenu: TPopupMenu
+    Images = MenuImages
+    OnPopup = Medialist_Category_PopupMenuPopup
+    Left = 72
+    Top = 122
+    object PM_ML_ConfigureMediaLibraryCat: TMenuItem
+      Caption = 'Configure media library'
+      ImageIndex = 42
+      OnClick = PM_ML_ConfigureMedialibraryClick
+    end
+    object PM_ML_ClearCategory: TMenuItem
+      Caption = 'Clear category'
+      ImageIndex = 38
+      OnClick = PM_ML_ClearCategoryClick
+    end
+    object N42: TMenuItem
+      Caption = '-'
+    end
+    object PM_ML_ShowPlaylistCategories: TMenuItem
+      Caption = 'Show playlist categories'
+      OnClick = PM_ML_ShowPlaylistCategoriesClick
+    end
+    object PM_ML_ShowWebradioCategory: TMenuItem
+      Caption = 'Show webradio category'
+      OnClick = PM_ML_ShowWebradioCategoryClick
+    end
   end
 end

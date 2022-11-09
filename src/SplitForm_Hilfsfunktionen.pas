@@ -61,7 +61,7 @@ uses Windows, forms, Classes, Controls, StdCtrls, ExtCtrls, Graphics, Nemp_Const
   procedure RevokeDragFiles;
 
   procedure UpdateSmallMainForm;
-  procedure UpdateFormDesignNeu(newMode: Integer);
+  procedure UpdateFormDesignNeu(newMode: Integer; NempStarting: Boolean = False);
 
   procedure PositionCloseImage(CloseBtn: TSkinButton; ParentPanel: TPanel);
 
@@ -688,7 +688,6 @@ procedure SplitMainForm;
 begin
     with Nemp_MainForm do
     begin
-        // NempFormBuildOptions.NilConstraints;
         __MainContainerPanel.Constraints.MinHeight := 10;
 
         Constraints.MinWidth := 0;
@@ -709,14 +708,7 @@ begin
     with Nemp_MainForm do
     begin
         // Constraints
-        Constraints.MaxHeight := Height;
-        Constraints.MinHeight := Height;
-        //if NempFormBuildOptions.ControlPanelTwoRows then
-        //    Constraints.MinWidth := 214
-        //else
-            Constraints.MinWidth := 400;
-
-        FixScrollbar;
+        //
 
         // show other forms
         PlaylistPanel.Parent  := PlaylistForm.pnlSplit;
@@ -798,6 +790,22 @@ begin
         MedienBibDetailFillPanel      .OnMouseUP := ExtendedControlForm.OnMouseUP;
         MedienBibDetailStatusLbl      .OnMouseUP := ExtendedControlForm.OnMouseUP;
 
+
+         Nemp_MainForm.Borderstyle := bsNone;
+    Nemp_MainForm.Top     := NempOptions.FormPositions[nfMainMini].Top;
+    Nemp_MainForm.Left    := NempOptions.FormPositions[nfMainMini].Left;
+    Nemp_MainForm.Width   := NempOptions.FormPositions[nfMainMini].Width;
+    Nemp_MainForm.Height  := Nemp_MainForm._ControlPanel.Height + 4;
+
+    Constraints.MaxHeight := Height;
+        //Constraints.MinHeight := Height;
+        //if NempFormBuildOptions.ControlPanelTwoRows then
+        //    Constraints.MinWidth := 214
+        //else
+            Constraints.MinWidth := 400;
+
+        FixScrollbar;
+
         // EditPlaylistSearchExit(Nil);
         EDITFastSearchExit(Nil);
     end;
@@ -805,63 +813,17 @@ end;
 
 procedure JoinMainForm;
 begin
-  //       yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-
   with Nemp_MainForm do
   begin
-    // AuswahlFillPanel.Width := TreePanel.Width - AuswahlFillPanel.Left; // is alClient
-    {TreePanel.Align := alNone;
-    TreePanel.Left := 0;
-    TreePanel.Parent := _TopMainPanel;
-
-    PlaylistPanel.Align := alNone;
-    PlaylistPanel.Parent := _TopMainPanel;
-
-    MedialistPanel.Align := alNone;
-    MedialistPanel.Parent := _VSTPanel;
-
-    MedienBibDetailPanel.Align := alNone;
-    MedienBibDetailPanel.Parent := _VSTPanel;  }
-
-(*  PartyMode is NEVER active here ...
-    if NempSkin.NempPartyMode.Active then
-        EditFastSearch.Width := Round(194 * NempSkin.NempPartyMode.ResizeFactor)
-    else
-        EditFastSearch.Width := 194;
-        *)
 
     MedienListeControlPanel.Width := EditFastSearch.Left + EditFastSearch.Width + 6;
-    //MedienlisteFillPanel.Left := EditFastSearch.Left + EditFastSearch.Width + 6;
-    //MedienlisteFillPanel.Width := MedialistPanel.Width - MedienlisteFillPanel.Left;// - 8;
     MedienListeStatusLBL.Width := MedienlisteFillPanel.Width - 16;
 
-(*  PartyMode is NEVER active here ...
-    if NempSkin.NempPartyMode.Active then
-        EditplaylistSearch.Width := Round(65 * NempSkin.NempPartyMode.ResizeFactor)
-    else
-        EditplaylistSearch.Width := 65;
-*)
-
-    //PlaylistFillPanel.Left := EditplaylistSearch.Left + EditplaylistSearch.Width + 6;
-    //PlaylistFillPanel.Width := PlaylistPanel.Width - PlaylistFillPanel.Left;// - 8;
-    //PlayListStatusLBL.Width := PlaylistFillPanel.Width - 16;
-
-    // set Resize-Handler again
-    /// Nemp_MainForm.OnResize := FormResize;
-    //_VSTPanel.OnResize     := _TopMainPanelResize;
-    //_TopMainPanel.OnResize := _TopMainPanelResize;
-
-    //MainSplitter.Visible := True;
-    //_VSTPanel.Visible := False;
-    //_TopMainPanel.Visible := False;
-
-      //__MainContainerPanel.Constraints.MinHeight := 0;
       Height := _ControlPanel.Height + 2;
       Constraints.MaxHeight := 0;
-      Constraints.MinWidth := 800;
-      Constraints.MinHeight := 600;
+      Constraints.MinWidth := MAINFORM_MinWidth;
+      Constraints.MinHeight := MAINFORM_MinHeight;
 
-      //Nemp_MainForm.OnResize := FormResize;
       Nemp_MainForm.Borderstyle := bsSizeable;
 
     FixScrollbar;
@@ -964,7 +926,7 @@ begin
     end;
 end;
 
-procedure UpdateFormDesignNeu(newMode: Integer);
+procedure UpdateFormDesignNeu(newMode: Integer; NempStarting: Boolean = False);
 begin
   with Nemp_MainForm do
   begin
@@ -1011,35 +973,6 @@ begin
               Nemp_MainForm.Menu := Nemp_MainMenu;
       end;
 
-      // Menu-Einträge Dis-/Enablen
-      actJoinWindows.Visible := newMode = 1;
-      actSplitWindows.Visible := newMode = 0;
-
-      actCompactToggleFileOverview.Visible := newMode = 0;
-      actCompactToggleTitleList.Visible := newMode = 0;
-      actCompactToggleBrowseList.Visible := newMode = 0;
-
-      actSplitToggleFileOverview.Visible := newMode = 1;
-      actSplitTogglePlaylist.Visible := newMode = 1;
-      actSplitToggleTitleList.Visible := newMode = 1;
-      actSplitToggleBrowseList.Visible := newMode = 1;
-
-      actToggleStayOnTop.Enabled := newMode = 1;
-
-      {PM_P_ViewSeparateWindows_Equalizer.Enabled := newMode = 1;
-      PM_P_ViewSeparateWindows_Playlist.Enabled := newMode = 1;
-      PM_P_ViewSeparateWindows_Medialist.Enabled := newMode = 1;
-      PM_P_ViewSeparateWindows_Browse.Enabled := newMode = 1;
-      PM_P_ViewStayOnTop.Enabled := newMode = 1;
-      MM_O_ViewSeparateWindows_Equalizer.Enabled := newMode = 1;
-      MM_O_ViewSeparateWindows_Playlist.Enabled := newMode = 1;
-      MM_O_ViewSeparateWindows_Medialist.Enabled := newMode = 1;
-      MM_O_ViewSeparateWindows_Browse.Enabled := newMode = 1;
-      MM_O_ViewStayOnTop.Enabled := newMode = 1;
-      // PM_P_ViewCompactComplete.Enabled := newMode = 0;
-     // MM_O_ViewCompactComplete.Enabled := newMode = 0;
-      }
-
       BtnClose.Visible := newMode = 1;
       BtnMinimize.Visible := newMode = 1;
       // temporary for this procedure
@@ -1058,13 +991,6 @@ begin
                 NempLayout.BuildMainForm(nil);
             end;
 
-            // after joining the MainForm: Apply the FormBuilder-Layout
-            {NempFormBuildOptions.BeginUpdate;
-            NempFormBuildOptions.RefreshBothRowsOrColumns(False);
-            NempFormBuildOptions.SwapMainLayout;
-            NempFormBuildOptions.ApplyRatios;
-            NempFormBuildOptions.EndUpdate;}
-
             Top    := NempOptions.FormPositions[nfMain].Top ;
             Left   := NempOptions.FormPositions[nfMain].Left;
             Height := NempOptions.FormPositions[nfMain].Height;
@@ -1077,33 +1003,12 @@ begin
             //if (Tag = -1) and NempFormBuildOptions.ControlPanelTwoRows then
             //    NempFormBuildOptions.RefreshControlPanel;
             SplitMainForm;
+            AfterLayoutBuild(Nil);
         end;
       end;
 
       // reactivate it again
       PanelCoverBrowse.OnResize := PanelCoverBrowseResize;
-      //CoverScrollbar.WindowProc := bckup;
-      //SendMessage( CoverScrollbar.Handle, WM_SETREDRAW, 1, 0);
-
-
-      //Korrektur. Das ist manchmal nötig // Why? Both Controls are alClient (at least now, 2022)
-      {GRPBOXPlaylist.Left   := 4;
-      GRPBOXPlaylist.Top    := 28;
-      GRPBOXPlaylist.Height := PlaylistPanel.Height - 29;
-      GRPBOXPlaylist.Width  := PlaylistPanel.Width - 12;
-      PlaylistVST.Left := 8;
-      PlaylistVST.Width := GRPBOXPlaylist.Width - 16;
-      PlaylistVST.Top := 8;
-      PlaylistVST.Height := GRPBOXPlaylist.Height - 16;}
-      //PlaylistForm.FormResize(Nil);
-
-      // 5. Constraints setzen
-      {
-      Constraints.MinHeight := NempOptions.NempFormAufteilung[AnzeigeMode].FormMinHeight;
-      Constraints.MaxHeight := NempOptions.NempFormAufteilung[AnzeigeMode].FormMaxHeight;
-      Constraints.MinWidth  := NempOptions.NempFormAufteilung[AnzeigeMode].FormMinWidth;
-      Constraints.MaxWidth  := NempOptions.NempFormAufteilung[AnzeigeMode].FormMaxWidth;
-      }
 
       if NempOptions.AnzeigeMode = 0 then
       begin
@@ -1112,9 +1017,6 @@ begin
           NempRegionsDistance.Bottom := height;
           NempRegionsDistance.Right := width;
           NempRegionsDistance.Left := 0;
-          // yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-          //_TopMainPanel.Constraints.MinHeight := NempFormBuildOptions.MainPanelMinHeight;
-          //_TopMainPanel.Constraints.MinWidth := NempFormBuildOptions.MainPanelMinWidth;
       end
       else
       begin
@@ -1130,12 +1032,6 @@ begin
           FormPosAndSizeCorrect(ExtendedControlForm);
           ReInitRelativePositions;
       end;
-
-      {// Größenkorrekturen
-      if (ArtistsVST.Width > AuswahlPanel.width - 40)
-          OR (ArtistsVST.Width < 40) then
-              ArtistsVST.Width := AuswahlPanel.width DIV 2;
-      }
 
       SnapActive := True;
 
@@ -1159,19 +1055,8 @@ begin
           FormPosAndSizeCorrect(MedienlisteForm);
           FormPosAndSizeCorrect(ExtendedControlForm);
           ReInitRelativePositions;
-          { removed december 2020
-          if NempOptions.FixCoverFlowOnStart then
-          begin
-              // this is somehow needed on XP (or only in my virtual machine??)
-              if _TopMainPanel.Height Mod 2 = 0 then
-                  _TopMainPanel.Height := _TopMainPanel.Height + 1
-              else
-                  _TopMainPanel.Height := _TopMainPanel.Height - 1  ;
-          end;
-          }
       end;
 
-      //02.2017 // MAXIMIZED-OVer TAskleiste????
       if (NempOptions.AnzeigeMode = 0) AND NempOptions.MainFormMaximized then
           WindowState := wsMaximized;
 
@@ -1179,28 +1064,16 @@ begin
           NempSkin.FitSkinToNewWindow;
 
       RepairZOrder;
-      // evtl. Form neu zeichnen. Stichwort "Schwarze Ecken"
-
-      // teilweise auskommentiert für Windows 7
       if (NempOptions.AnzeigeMode = 0) AND (Tag in [0,1]) then
       begin
           SetWindowRgn( handle, 0, Not _IsThemeActive );
           InvalidateRect(handle, NIL, TRUE);
       end;
 
-
-      //MM_O_ViewCompactComplete.Checked := NempOptions.AnzeigeMode = 0;
-      // PM_P_ViewCompactComplete.Checked := NempOptions.AnzeigeMode = 0;
-
       CorrectSkinRegionsTimer.Enabled := True;
-      //Nemp_MainForm.CorrectSkinRegions;
-
-      MedienBib.NewCoverFlow.SetNewHandle(PanelCoverBrowse.Handle);
-      // necessary on advanced skins
-      // ReAcceptDragFiles;  / done in CorrectSkinregiosnTimer
-
+      if not NempStarting then
+        MedienBib.NewCoverFlow.SetNewHandle(PanelCoverBrowse.Handle);
       Tag := NempOptions.AnzeigeMode;
-
 
       //CoverScrollbar.WindowProc := NewScrollBarWndProc;
       //SendMessage( CoverScrollbar.Handle, WM_SETREDRAW, 1, 0);
@@ -1222,25 +1095,14 @@ end;
 
 procedure ReAcceptDragFiles;
 begin
-      DragAcceptFiles (PlaylistForm.Handle, True);
-      DragAcceptFiles (AuswahlForm.Handle, True);
-      DragAcceptFiles (MedienlisteForm.Handle, True);
-      DragAcceptFiles (ExtendedControlForm.Handle, True);
-      //DragAcceptFiles (Nemp_MainForm.Handle, True);
-      //DragAcceptFiles(Nemp_MainForm._ControlPanel.Handle, True);
-      RegisterDragDrop(Nemp_MainForm._ControlPanel.Handle, Nemp_MainForm.fDropManager as IDropTarget);
-      //RegisterDragDrop(Nemp_MainForm.PanelCoverBrowse.Handle, Nemp_MainForm.fDropManager as IDropTarget);
-      RegisterDragDrop(Nemp_MainForm.TreePanel.Handle, Nemp_MainForm.fDropManager as IDropTarget);
-      RegisterDragDrop(Nemp_MainForm.CloudPanel.Handle, Nemp_MainForm.fDropManager as IDropTarget);
-      RegisterDragDrop(Nemp_MainForm.CoverflowPanel.Handle, Nemp_MainForm.fDropManager as IDropTarget);
-
-      {case RegisterDragDrop(Nemp_MainForm._ControlPanel.Handle, Nemp_MainForm.fDropManager as IDropTarget) of
-      DRAGDROP_E_INVALIDHWND : ShowMessage('invalid');
-      DRAGDROP_E_ALREADYREGISTERED : ShowMessage('already reg');
-      E_OUTOFMEMORY : ShowMessage('outofmem');
-       S_OK: ShowMessage('ok');
-    end;}
-
+  DragAcceptFiles (PlaylistForm.Handle, True);
+  DragAcceptFiles (AuswahlForm.Handle, True);
+  DragAcceptFiles (MedienlisteForm.Handle, True);
+  DragAcceptFiles (ExtendedControlForm.Handle, True);
+  RegisterDragDrop(Nemp_MainForm._ControlPanel.Handle, Nemp_MainForm.fDropManager as IDropTarget);
+  RegisterDragDrop(Nemp_MainForm.TreePanel.Handle, Nemp_MainForm.fDropManager as IDropTarget);
+  RegisterDragDrop(Nemp_MainForm.CloudPanel.Handle, Nemp_MainForm.fDropManager as IDropTarget);
+  RegisterDragDrop(Nemp_MainForm.CoverflowPanel.Handle, Nemp_MainForm.fDropManager as IDropTarget);
 end;
 
 procedure PositionCloseImage(CloseBtn: TSkinButton; ParentPanel: TPanel);

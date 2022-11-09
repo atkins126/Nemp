@@ -68,6 +68,7 @@ object PlaylistEditorForm: TPlaylistEditorForm
       OnFocusChanged = PlaylistSelectionVSTFocusChanged
       OnFocusChanging = PlaylistSelectionVSTFocusChanging
       OnGetText = PlaylistSelectionVSTGetText
+      OnPaintText = PlaylistSelectionVSTPaintText
       OnNewText = PlaylistSelectionVSTNewText
       OnStartDrag = PlaylistSelectionVSTStartDrag
       Touch.InteractiveGestures = [igPan, igPressAndTap]
@@ -76,7 +77,7 @@ object PlaylistEditorForm: TPlaylistEditorForm
         item
           Position = 0
           Text = 'Favorite playlists'
-          Width = 214
+          Width = 210
         end>
     end
     object BtnNew: TButton
@@ -158,7 +159,7 @@ object PlaylistEditorForm: TPlaylistEditorForm
         item
           Position = 0
           Text = 'Title'
-          Width = 261
+          Width = 257
         end
         item
           Alignment = taRightJustify
@@ -215,6 +216,7 @@ object PlaylistEditorForm: TPlaylistEditorForm
     Top = 89
   end
   object PopUpPlaylist: TPopupMenu
+    OnPopup = PopUpPlaylistPopup
     Left = 176
     Top = 32
     object PM_PL_AddFiles: TMenuItem

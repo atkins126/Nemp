@@ -394,7 +394,7 @@ type
           procedure LoadSettings;
           procedure SaveSettings;
 
-          procedure GetThemes(out Themes: TStrings);
+          procedure GetThemes(dest: TStrings);
 
           // Im VCL-Thread ausführen, mit CS geschützt
           // d.h. Message an Form Senden, die das dann ausführt
@@ -840,7 +840,7 @@ begin
   NempSettingsManager.WriteString('Webserver', 'UsernameA'           , UsernameA         );
   NempSettingsManager.WriteString('Webserver', 'PasswordA'           , PasswordA         );
 
-  // delete deprecated Hotkeys.ini (not used any longer)
+  // delete deprecated .ini (not used any longer)
   if FileExists(NempSettingsManager.SavePath + 'NempWebServer.ini') then
     DeleteFile(NempSettingsManager.SavePath + 'NempWebServer.ini');
 end;
@@ -1929,29 +1929,32 @@ begin
 
     EnterCriticalSection(CS_AccessLibrary);
 
-    Keywords := ExplodeWithQuoteMarks('+', Keyword);
-
-    SetLength(KeywordsUTF8, Keywords.Count);
-    for i := 0 to Keywords.Count - 1 do
-        KeywordsUTF8[i] := UTF8Encode(AnsiLowerCase(Keywords[i]));
-
-    tmpList := TAudioFileList.Create(False);
+    Keywords := TStringList.Create;
     try
-        for i := 0 to fWebMedienBib.Count - 1 do
-        begin
-            if AudioFileMatchesKeywords(fWebMedienBib[i], Keywords) then
-                DestList.Add(fWebMedienBib[i])
-            else
-                if AudioFileMatchesKeywordsApprox(fWebMedienBib[i], KeywordsUTF8) then
-                    tmpList.Add(fWebMedienBib[i]);
-        end;
-        for i := 0 to tmpList.Count - 1 do
-            DestList.Add(tmpList[i]);
-    finally
-        tmpList.Free;
-    end;
-    Keywords.Free;
+        ExplodeWithQuoteMarks('+', Keyword, Keywords);
 
+        SetLength(KeywordsUTF8, Keywords.Count);
+        for i := 0 to Keywords.Count - 1 do
+            KeywordsUTF8[i] := UTF8Encode(AnsiLowerCase(Keywords[i]));
+
+        tmpList := TAudioFileList.Create(False);
+        try
+            for i := 0 to fWebMedienBib.Count - 1 do
+            begin
+                if AudioFileMatchesKeywords(fWebMedienBib[i], Keywords) then
+                    DestList.Add(fWebMedienBib[i])
+                else
+                    if AudioFileMatchesKeywordsApprox(fWebMedienBib[i], KeywordsUTF8) then
+                        tmpList.Add(fWebMedienBib[i]);
+            end;
+            for i := 0 to tmpList.Count - 1 do
+                DestList.Add(tmpList[i]);
+        finally
+            tmpList.Free;
+        end;
+    finally
+      Keywords.Free;
+    end;
     LeaveCriticalSection(CS_AccessLibrary);
 end;
 
@@ -2479,13 +2482,13 @@ begin
     LeaveCriticalSection(CS_AccessLibrary);
 end;
 
-procedure TNempWebServer.GetThemes(out Themes: TStrings);
+procedure TNempWebServer.GetThemes(dest: TStrings);
 var SR: TSearchRec;
 begin
     if (FindFirst(ExtractFilePath(Paramstr(0)) + 'HTML\' + '*', faDirectory, SR)=0) then
         repeat
           if (SR.Name<>'.') and (SR.Name<>'..') and ((SR.Attr AND faDirectory)= faDirectory) then
-              Themes.Add(Sr.Name);
+              dest.Add(Sr.Name);
         until FindNext(SR)<>0;
     FindClose(SR);
 end;

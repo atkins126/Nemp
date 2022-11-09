@@ -128,7 +128,6 @@ uses
   LibraryOrganizer.Playlists in 'LibraryOrganizer.Playlists.pas',
   LibraryOrganizer.Files in 'LibraryOrganizer.Files.pas',
   LibraryOrganizer.Webradio in 'LibraryOrganizer.Webradio.pas',
-  LibraryOrganizer.Configuration in 'LibraryOrganizer.Configuration.pas' {FormLibraryConfiguration},
   LibraryOrganizer.Configuration.NewLayer in 'LibraryOrganizer.Configuration.NewLayer.pas' {FormNewLayer},
   NempDragFiles in 'NempDragFiles.pas',
   fChangeFileCategory in 'fChangeFileCategory.pas' {FormChangeCategory},
@@ -138,7 +137,9 @@ uses
   RedeemerQR in '3rd Party Units\RedeemerQR.pas',
   RedeemerInheritablePNG in '3rd Party Units\RedeemerInheritablePNG.pas',
   ReplayGain in '3rd Party Units\ReplayGain.pas',
-  MainFormLayout in 'MainFormLayout.pas';
+  MainFormLayout in 'MainFormLayout.pas',
+  NempHelp in 'NempHelp.pas',
+  fConfigErrorDlg in 'fConfigErrorDlg.pas' {ConfigErrorDlg};
 
 {$R *.res}
 
@@ -164,8 +165,8 @@ begin
   Application.CreateForm(TReplayGainProgressForm, ReplayGainProgressForm);
   Graphics.DefFontData.Name := 'Tahoma';
 
-    Application.Title := NEMP_NAME_TASK;
-    Application.Name  := NEMP_NAME;
+  Application.Title := NEMP_NAME_TASK;
+  Application.Name  := NEMP_NAME;
 
     // Show Mainform, but beyond all visible area
     Nemp_MainForm.Top := 10000;
@@ -191,6 +192,7 @@ begin
     Nemp_MainForm.Top := EVILHACKY;
     Nemp_MainForm.Left := EVILHACKX;
 
+    InitializeCoverflow;
     // for some reasons, there are some controls "unpainted" on startup on some skins
     Nemp_MainForm.RepaintAll;
 
@@ -201,6 +203,7 @@ begin
     end;
 
     FSplash.Visible := False;
+
 
     RunWizard;
 

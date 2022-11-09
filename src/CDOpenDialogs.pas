@@ -1,3 +1,31 @@
+{
+
+    Unit CDOpenDialogs
+
+    ---------------------------------------------------------------
+    Nemp - Noch ein Mp3-Player
+    Copyright (C) 2005-2022, Daniel Gaussmann
+    http://www.gausi.de
+    mail@gausi.de
+    ---------------------------------------------------------------
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+
+    See license.txt for more information
+
+    ---------------------------------------------------------------
+}
 unit CDOpenDialogs;
 
 interface
@@ -72,9 +100,9 @@ end;
 
 procedure TCDOpenDialog.FormShow(Sender: TObject);
 begin
-    cb_AutoCddb.OnClick := Nil;
-    cb_AutoCddb.checked := NempOptions.UseCDDB;
-    cb_AutoCddb.OnClick := cb_AutoCddbClick;
+    // cb_AutoCddb.OnClick := Nil;
+    // cb_AutoCddb.checked := NempOptions.UseCDDB;
+    // cb_AutoCddb.OnClick := cb_AutoCddbClick;
     // Get list of available drives
     EnsureDriveListIsFilled;     // from cddaUtils
     // Clear Files
@@ -128,8 +156,8 @@ end;
 
 procedure TCDOpenDialog.cb_AutoCddbClick(Sender: TObject);
 begin
-    if cb_AutoCddb.Checked then
-        UpdateTrackList(true); // Update tracklist with cddb-Data
+    //if cb_AutoCddb.Checked then
+    //    UpdateTrackList(true); // Update tracklist with cddb-Data
 end;
 
 
@@ -178,9 +206,9 @@ begin
             newAudioFile.Pfad := 'cda://' + TCDDADrive(CDDriveList[CurrentDrive]).Letter + ',' + IntToStr(i+1);
 
             localAudioFiles.Add(newAudioFile);
-            if UseCddb then
-                newAudioFile.GetAudioData(newAudioFile.Pfad, GAD_cddb)
-            else
+            //if UseCddb then
+            //    newAudioFile.GetAudioData(newAudioFile.Pfad, GAD_cddb)
+            //else
                 newAudioFile.GetAudioData(newAudioFile.Pfad, 0);
 
             lbTracks.Items.Add(IntToStr(newAudioFile.Track) + ' - ' + NempDisplay.PlaylistTitle(newAudioFile));
@@ -196,7 +224,7 @@ begin
         if lbTracks.Selected[i] or (cbInsertMode.ItemIndex = 0) then
             Files.Add(localAudioFiles[i].Pfad);
 
-    NempOptions.UseCDDB := cb_AutoCddb.checked;
+    // NempOptions.UseCDDB := cb_AutoCddb.checked;
 end;
 
 end.

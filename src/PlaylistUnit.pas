@@ -80,7 +80,7 @@ type
     ResizeFlag: Cardinal;
 
     procedure WMWindowPosChanging(var Message: TWMWINDOWPOSCHANGING); message WM_WINDOWPOSCHANGING;
-    Procedure WMDropFiles (Var aMsg: tMessage);  message WM_DROPFILES;
+    // Procedure WMDropFiles (Var aMsg: tMessage);  message WM_DROPFILES;
   public
     { Public-Deklarationen }
     // Resizing-Flag: On WMWindowPosChanging the RelativPositions must be changed
@@ -111,13 +111,6 @@ begin
   Width  := BWidth  ;
 
   PositionCloseImage(CloseImageP, Nemp_MainForm.PlaylistPanel);
-  {Nemp_MainForm.PlaylistFillPanel.Width := Nemp_MainForm.PlaylistPanel.Width - Nemp_MainForm.PlaylistFillPanel.Left - 16;
-  CloseImageP.Parent := Nemp_MainForm.PlaylistPanel;
-  CloseImageP.Left := Nemp_MainForm.PlaylistPanel.Width - CloseImageP.Width;
-  CloseImageP.Top := 3; //6              // PlaylistPanel
-  CloseImageP.BringToFront;
-  }
-
   SetRegion(ContainerPanelPlaylistForm, self, NempRegionsDistance, handle);
 
   // Das ist nötig, um z.B. zu korrigieren, dass die Form komplett unter Form1 versteckt ist!!
@@ -166,12 +159,6 @@ end;
 procedure TPlaylistForm.FormActivate(Sender: TObject);
 begin
   PositionCloseImage(CloseImageP, Nemp_MainForm.PlaylistPanel);
-
-{  Nemp_MainForm.PlaylistFillPanel.Width := Nemp_MainForm.PlaylistPanel.Width - Nemp_MainForm.PlaylistFillPanel.Left - 16;
-  CloseImageP.Parent := Nemp_MainForm.PlaylistPanel;
-  CloseImageP.Left := Nemp_MainForm.PlaylistPanel.Width - CloseImageP.Width;
-  CloseImageP.Top := 3; //6              // PlaylistPanel
-  CloseImageP.BringToFront;}
 end;
 
 procedure TPlaylistForm.FormClose(Sender: TObject;
@@ -189,11 +176,13 @@ begin
     CloseImageP.Parent := PlaylistForm;
 end;
 
+(*
 Procedure TPlaylistForm.WMDropFiles (Var aMsg: tMessage);
 Begin
     Inherited;
     Handle_DropFilesForPlaylist(aMsg, False);
 end;
+*)
 
 
 procedure TPlaylistForm.FormMouseDown(Sender: TObject;
@@ -210,7 +199,7 @@ begin
   with Nemp_MainForm do
   begin
     NempOptions.FormPositions[fNempFormID].Visible := False;
-    actSplitTogglePlayList.Checked := NempOptions.FormPositions[fNempFormID].Visible;
+    actTogglePlayList.Checked := NempOptions.FormPositions[fNempFormID].Visible;
   end;
   close;
 end;

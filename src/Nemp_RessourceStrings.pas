@@ -50,21 +50,28 @@ Resourcestring
   XcmbNoToAll = 'N&o to All';
   XcmbYesToAll = 'Yes to &All';
 
-// Optionen-Baum
-OptionsTree_Filetypes = 'Filetypes (Windows Registry)';
-OptionsTree_Controls = 'Controls';
-OptionsTree_Taskbar = 'Taskbar';
-OptionsTree_ListsAndColumns = 'Lists and Columns';
-OptionsTree_PlayerSettings = 'Player settings';
-OptionsTree_Playlist = 'Playlist';
-OptionsTree_LastFM = 'LastFM (scrobble)';
-OptionsTree_Extended = 'Extended settings';
-
+OptionsTree_SystemGeneral     = 'General settings';
+OptionsTree_SystemControl     = 'Controls';
+OptionsTree_PlayerSettings    = 'Playback';
+OptionsTree_Playlist          = 'Playlist';
+OptionsTree_FilesMain         = 'File management';
+OptionsTree_Categories        = 'Media library configuation';
+OptionsTree_ViewMain          = 'List view settings';
+OptionsTree_FontsAndPartyMode = 'Fonts and Party Mode';
+OptionsTree_CoverFlow         = '3D Coverflow';
+OptionsTree_MetaData          = 'Meta data (e.g. ID3Tags)';
+OptionsTree_MediabibSearch    = 'Search options';
+OptionsTree_PlayerWebradio    = 'Webradio';
+OptionsTree_PlayerEffects     = 'Effects and ReplayGain';
+OptionsTree_PlayerEvents      = 'Happy Birthday timer';
+OptionsTree_PlayerScrobbler   = 'LastFM (scrobble)';
+OptionsTree_PlayerWebServer   = 'WebServer';
+OptionsTree_SystemFiletyps    = 'Windows: File types registration';
 
 TreeHeader_Categories = 'Categories';
 TreeHeader_CatFiles = 'Music files';
 TreeHeader_CatPlaylists = 'Playlists';
-TreeHeader_CatWebRadio = 'Webradio stations';
+TreeHeader_CatWebRadio = 'Webradio';
 
 TreeHeader_Artists = 'Artists';
 TreeHeader_Albums= 'Albums';
@@ -113,17 +120,17 @@ DetailForm_OnlyOneM4ACover = '(only one cover supported)';
 DetailForm_SaveChanges = 'Do you want to save the changes in the current file?';
 DetailForm_HighPlayCounter = 'This file was played %d times. This information will be irretrievably deleted if you reset the rating.';
 
-DetailForm_LibraryTagChanged = 'You have changed some properties of the audiofile, but these changes have not been saved yet.'
-          + 'If you make changes on this page as well, this may result in inconsistencies or unexpected behavior upon saving.'
-          + #13#10 + #13#10
-          + 'Would you like to save your changes now before you continue?';
+//DetailForm_LibraryTagChanged = 'You have changed some properties of the audiofile, but these changes have not been saved yet.'
+//          + 'If you make changes on this page as well, this may result in inconsistencies or unexpected behavior upon saving.'
+//          + #13#10 + #13#10
+//          + 'Would you like to save your changes now before you continue?';
 
-DetailForm_NoNewFramesPossible = 'All supported meta frames are already set. There''s nothing Nemp could add to the file here.';
+DetailForm_NoNewFramesPossible = 'All supported meta frames are already set.';
 DetailForm_CurrentLibraryCover = 'Current cover art';
 DetailForm_CoverflowNotActive = 'The Coverflow will update automatically when you activate it';
 DetailForm_NoPictureInOggMetaDataSuppotred = 'Not supported';
-DetailForm_CopyFromID3v2 = 'Copy from ID3 v2';
-DetailForm_CopyFromAPE = 'Copy from APE';
+// DetailForm_CopyFromID3v2 = 'Copy from ID3 v2';
+// DetailForm_CopyFromAPE = 'Copy from APE';
 
 
 Warning_FileNotFound = 'File not found';
@@ -173,13 +180,6 @@ Warning_TooManyFiles = 'Warning: Too many files for Drag&Drop and Copy&Paste res
 Warning_MagicCopyFailed = 'Extended Copy&Paste failed. This method doesn''t work from write-protected drives (e.g. CD/DVD).';
 
 Error_ID3OnlyInMp3Files = 'ID3-tags can only be written to mp3-files.';
-//Error_EvilLyricsNotFound1 = 'This function needs another program called "EvilLyrics". Start this program and try again.';
-//Error_EvilLyricsNotFound2 = 'This program can easily be found on freeware-sites in the internet.';
-//Error_EvilLyricsIncompatible = 'If you started this program already, your version is maybe incompatible to Nemp.';
-//Error_EvilLyricsIncompatible2 = 'Your version of EvilLyrics is incompatible to Nemp.';
-//EvilLyrics_ManualHint = 'If you found proper lyrics, copy it to this window and click "save".';
-
-LyricsSearch_NotFoundMessage = 'No lyrics found. Do you want to search them manually?';
 
 //ErrorSavingPlaylist = 'An error occured while saving the playlist. This should not happen.';
 //ErrorSavingMediaLib = 'An error occured while saving the medialibrary. This should not happen.';
@@ -239,49 +239,16 @@ FloatingPointChannels_On = 'Current status: On';
 FloatingPointChannels_Off = 'Current status: Off';
 
 
-    OptionsTree_SystemGeneral     = 'General settings';
-    OptionsTree_SystemFiletyps    = 'File types registration';
-    OptionsTree_SystemControl     = 'Controls';
-    OptionsTree_SystemSystem      = 'System';
-    OptionsTree_SystemTaskbar     = 'Taskbar and tray';
-    OptionsTree_SystemHibernate   = 'Hibernate / Stand by';
 
-    OptionsTree_ViewMain          = 'Viewing settings';
-    OptionsTree_ViewPlayer        = 'Player';
-    //OptionsTree_ViewView          = 'View';
-    OptionsTree_ViewFonts         = 'Fonts';
-    OptionsTree_PartyMode         = 'Party-Mode';
-    OptionsTree_ViewExtended      = 'Extended viewing settings';
-    OptionsTree_CoverFlow         = 'Coverflow';
-
-    OptionsTree_PlayerMain        = 'Player settings';
-    OptionsTree_PlayerPlaylist    = 'Playlist';
-    OptionsTree_AudioPlaylist     = 'Playlist';
-    OptionsTree_PlayerMedialibrary= 'Media library';
-    OptionsTree_PlayerMetaDataAccess = 'Metadata (e.g. ID3Tags)';
-    OptionsTree_PlayerWebradio    = 'Web radio';
-    OptionsTree_PlayerEffects     = 'Effects and ReplayGain';
-    OptionsTree_PlayerEvents      = 'Birthday mode';
-    OptionsTree_PlayerScrobbler   = 'LastFM (scrobble)';
-    OptionsTree_PlayerWebServer   = 'WebServer';
-    OptionsTree_PlayerExtendedPlayer   = 'Extended player settings';
-    OptionsTree_PlayerExtendedPlaylist = 'Extended playlist settings';
-    OptionsTree_PlayerRandom      = 'Random playback';
-
-    OptionsTree_FilesMain         = 'File management';
-    OptionsTree_FilesCover        = 'Cover & Lyrics';
-    OptionsTree_Categories        = 'Media Library: Categories';
-
-
-    OptionsTree_ExtendedMain      = 'Extended settings';
-    OptionsTree_MediabibSearch    = 'Search options';
-    OptionsTree_MediabibUnicode   = 'Unicode';
 
     OptionsForm_DefaultCoverResetFailed = 'The default cover cannot be restored because the original file "default_cover.jpg" was not found.';
     OptionsForm_DefaultCoverChangeFailed = 'Sorry, some error occured while saving the new default cover art in the Nemp cover archive.';
     OptionsForm_InvalidTime = 'Invalid time. Try something between 00:00 and 23:59.';
 
     OptionsForm_UnratedFilesHint = '* Including %d unrated files.';
+
+    OptionsForm_UnSavedChangesQuery = 'Some settings have been changed, but they have not been applied yet.'
+          +#13#10 + #13#10 + 'Do you want to save the changes before closing this window?';
 
     Warning_NoSkinFound = 'No skins found';
     AdvancedSkinActivateHint = 'Note: The current skin does not support advanced skinning.';
@@ -329,9 +296,9 @@ SelectDirectoryDialog_RemoteNemp = 'Select download directory';
 AutoScanDir_AlreadyExists = 'The selected directory (or a parent directory) is already in the list.';
 AutoSacnDir_SubDirExisted = 'A subdirectory of the selected directory was removed from the list: ';
 
-WinX64WarningDeskband = 'You are using a 64Bit-Version of Windows. Installing a Deskband is unfortunately not possible.';
-WinVistaWarningDeskband = 'The Nemp Deskband is not compatible with Windows Vista or later.';
-Win7WarningDeskband = 'The Nemp Deskband is not compatible with Windows Vista or later. Use the buttons in the Windows Taskbar-preview instead.';
+// WinX64WarningDeskband = 'You are using a 64Bit-Version of Windows. Installing a Deskband is unfortunately not possible.';
+// WinVistaWarningDeskband = 'The Nemp Deskband is not compatible with Windows Vista or later.';
+// Win7WarningDeskband = 'The Nemp Deskband is not compatible with Windows Vista or later. Use the buttons in the Windows Taskbar-preview instead.';
 
     EQSetting_Custom = '(Custom)';
     Infostring_Webstream = 'Webstream';
@@ -391,6 +358,8 @@ WebServer_InvalidParameter = 'Invalid parameter.';
 WebServer_EmptyPlaylist = 'No files to display. The playlist is empty.';
 WebServer_PlayerNotReady = 'The Player is not ready: No file was loaded.';
 WebServer_EmptyLibrary = 'Nothing to display. The library is empty.';
+
+WebServer_CurrentURLInQRCode = 'Current URL in QRCode: %s';
 
 NempUpdate_ConnectError = 'Could not connect to server. Please check your internet configuration.';
 NempUpdate_Error = 'Could not get update information from server.';
@@ -491,6 +460,7 @@ MainForm_GlobalQuickSearch    = 'Quicksearch (library)';
 /// MainForm_MoreSearchresults  = 'Additional results (not limited to current preselection)';
 MainForm_NoSearchresults    = 'Nothing found. Try another search.';
 MainForm_EmptyCategory      = 'There are no files in the current category.';
+MainForm_EmptyBibPlaylist      = 'The playlist contains no files.';
 MainForm_SearchQueryTooShort = 'Search query too short. Please enter at least 2 characters.';
 MainForm_NoFavorites = 'No files flagged with this marker.';
 // DummyFile for browsing Playlists/Webradio
@@ -621,6 +591,9 @@ MainForm_MenuCaptionsSortDirectoriesBy = 'Sort Directories by';
 MainForm_MenuCaptionsSortTagCloudBy = 'Sort Tags by';
 
 MainForm_MenuCaptionsSortCollectionBy = 'Sort "%s" by';
+MainForm_MenuCaptionsClearCollection = 'Clear category "%s"';
+MainForm_MenuCaptionsClearCollectionBlanko = 'Clear category';
+MainForm_ConfirmClearCategory = 'This will remove all %d files from this category. Do you want to continue?';
 
 MainForm_MenuCaptionsPlayAllArtist      = 'Play all tracks of this artist (and delete current playlist)';
 MainForm_MenuCaptionsPlayAllAlbum       = 'Play all tracks of this album (and delete current playlist)';
@@ -669,6 +642,7 @@ MainForm_MenuCaptionsSearchForEmptyAlbum  = 'Show all files where "Album" is mis
 
 MainForm_LibraryIsEmpty = 'You music library is empty. Drop some files here to start.';
 MainForm_LibraryIsLoading = 'Loading library. Please wait...';
+MainForm_PlaylistIsEmpty = 'Empty playlist. Drop some files here to play.';
 
 // MainForm_MainMenu_Messages = 'Messages (%d)';
 MainForm_MainMenu_NoMessages = 'Messages';
@@ -748,13 +722,11 @@ DeleteSelect_DeletingFilesComplete = 'The selected files have been removed from 
 // MediaLibrary_FilesNotFoundExternalDrive = 'There are %d missing files. Probably there is an external drive not connected to your computer.';
 
 MediaLibrary_DuplicatesWarning       = 'Nemp found some duplicate entries in your media library. This is not supposed to happen, unless you just added the current playlist to the media library. - If this message appears frequently, please contact me via e-mail. Thank you!';
-// MediaLibrary_SearchingLyrics         = 'Searching lyrics for %s %s';
 MediaLibrary_SearchingLyrics_JustFile= 'Searching lyrics for %s';
-// MediaLibrary_SearchingTags           = 'Searching tags for %s %s';
 MediaLibrary_SearchingTags_JustFile  = 'Searching tags for %s';
-MediaLibrary_LyricsFailed            = 'Connection to lyrics.wikia.com failed. Please check your internet configuration.';
+// MediaLibrary_LyricsFailed            = 'Connection to lyrics.wikia.com failed. Please check your internet configuration.';
 MediaLibrary_GetTagsFailed           = 'No additional Tags found.';
-MediaLibrary_SearchLyricsStats       = ' (found %d/%d)';
+// MediaLibrary_SearchLyricsStats       = ' (found %d/%d)';
 MediaLibrary_SearchTagsStats         = ' (found %d/%d)';
 
 MediaLibrary_RatingComplete = 'All ratings have been successfully updated.';
@@ -764,13 +736,15 @@ MediaLibrary_PermissionToChangeTagsRequired = 'You denied quick access to metada
                     +#13#10
                     +#13#10+'Do you want to allow Nemp changing metadata in the selected files?';
 
+/// LyricsSearch_NotFoundMessage = 'No lyrics found. Do you want to search them manually?';
 MediaLibrary_OperationCancelled = 'Operation cancelled';
-MediaLibrary_SearchLyricsComplete_SingleNotFound = 'Sorry, the lyrics for this file could not be found.';
-MediaLibrary_SearchLyricsComplete_AllFound = 'Lyric search complete. All lyrics found.';
-MediaLibrary_SearchLyricsComplete_ManyFound = 'Lyric search complete. %d of %d lyrics could be found.'#13#10#13#10'You can try to find some of the missing lyrics by a manual search on lyrics.wikia.com or other lyrics sites on the net.';
-MediaLibrary_SearchLyricsComplete_FewFound = 'Lyric search complete. Only %d of %d lyrics could be found.'#13#10#13#10'Either the files are not properly tagged, they are instrumental only, or you have a special taste in music.'#13#10#13#10'Please note, that lyrics are not supported for some audio formats.';
-MediaLibrary_SearchLyricsComplete_NoneFound = 'Lyric search complete. Sorry, but nothing could be found.'#13#10#13#10'Either the files are not properly tagged, they are instrumental only, or you have a special taste in music.'#13#10#13#10'Please note, that lyrics are not supported for some audio formats.';
-MediaLibrary_SearchLyricsComplete_SomeErrors = 'Lyric search complete. Some unexpected errors appeared during the process.'#13#10#13#10'Please view the Error-Log for details.';
+MediaLibrary_SearchLyricsDisabled = 'The automatic search for Lyrics has been removed from Nemp.';
+//MediaLibrary_SearchLyricsComplete_SingleNotFound = 'Sorry, the lyrics for this file could not be found.';
+//MediaLibrary_SearchLyricsComplete_AllFound = 'Lyric search complete. All lyrics found.';
+//MediaLibrary_SearchLyricsComplete_ManyFound = 'Lyric search complete. %d of %d lyrics could be found.'#13#10#13#10'You can try to find some of the missing lyrics by a manual search on lyrics.wikia.com or other lyrics sites on the net.';
+//MediaLibrary_SearchLyricsComplete_FewFound = 'Lyric search complete. Only %d of %d lyrics could be found.'#13#10#13#10'Either the files are not properly tagged, they are instrumental only, or you have a special taste in music.'#13#10#13#10'Please note, that lyrics are not supported for some audio formats.';
+//MediaLibrary_SearchLyricsComplete_NoneFound = 'Lyric search complete. Sorry, but nothing could be found.'#13#10#13#10'Either the files are not properly tagged, they are instrumental only, or you have a special taste in music.'#13#10#13#10'Please note, that lyrics are not supported for some audio formats.';
+//MediaLibrary_SearchLyricsComplete_SomeErrors = 'Lyric search complete. Some unexpected errors appeared during the process.'#13#10#13#10'Please view the Error-Log for details.';
 
 MediaLibrary_SearchTagsComplete_SingleNotFound = 'Sorry, for this file are no additional Tags available.';
 MediaLibrary_SearchTagsComplete_AllFound = 'Tag search complete. Added some Tags for every file.';
@@ -778,7 +752,6 @@ MediaLibrary_SearchTagsComplete_ManyFound = 'Tag search complete. Found Tags for
 MediaLibrary_SearchTagsComplete_FewFound = 'Tag search complete. Found Tags for only %d of %d files.'#13#10#13#10'Either the files are not properly tagged, or you have a special taste in music.'#13#10#13#10'Please note, that additional Tags are not supported for some audio formats.';
 MediaLibrary_SearchTagsComplete_NoneFound = 'Tag search complete. Sorry, no additional Tags could be found.'#13#10#13#10'Either the files are not properly tagged, or you have a special taste in music.'#13#10#13#10'Please note, that additional Tags are not supported for some audio formats.';
 MediaLibrary_SearchTagsComplete_SomeErrors = 'Tag search complete. Some unexpected errors appeared during the process.'#13#10#13#10'Please view the Error-Log for details.';
-
 
 MediaLibrary_OperationComplete_CloseWindowNow = 'You can close this window now.';
 MediaLibrary_OperationComplete_CBClose_NoTimer = 'Close window after completion';
@@ -1011,7 +984,6 @@ CopyToUSB_ERROR_ACCESS_DENIED = 'Access denied. Choose OK to continue with next 
 CopyToUSB_ERROR_NOT_ENOUGH_MEMORY  = 'Not enough memory. Choose OK to continue with next file, or cancel the copying process.';
 
 WizardCancel = 'You cancelled the Nemp Wizard. Some features may be disabled.';
-
 Wizard_NewSkin = 'Nemp 4.6 comes with a new default skin. Do you want to use the new one?';
 
 StartG15ToolQuestion = 'If you have a Logitech G15 keyboard, Nemp can display the current title (and some other stuff) on it.'
@@ -1045,12 +1017,11 @@ DeleteHelper_DoWithDriveMissing   = 'You should keep files in the library, conne
 DeleteHelper_DoWithNetworkPresent = 'You should remove the missing files from the library.';
 DeleteHelper_DoWithNetworkMissing = 'You should keep the files in the library, check your network settings and try again later.';
 
-DeleteHelper_Readme = 'Sometimes it is not appropriate to remove every missing file from the library. '
-    + 'E.g.: If you store large parts of your music files on an external harddrive which is currently not connected to your PC.'
-    + #13#10 + #13#10
-    + 'In this dialog you can choose what to do with the missing files on the specified drives.' + #13#10
-    + 'Missing files from the checked drives will be removed from the library, the others will not be removed.'
-    ;
+//DeleteHelper_Readme = 'Sometimes it is not appropriate to remove every missing file from the library. '
+//    + 'E.g.: If you store large parts of your music files on an external harddrive which is currently not connected to your PC.'
+//    + #13#10 + #13#10
+//    + 'In this dialog you can choose what to do with the missing files on the specified drives.' + #13#10
+//    + 'Missing files from the checked drives will be removed from the library, the others will not be removed.' ;
 
 DeleteHelper_Explanation = 'Nemp has detected several files in your library that are currently missing.'
               +#13#10#13#10
@@ -1073,9 +1044,9 @@ Warning_LyricsUsage = 'Ignoring lyrics will remove all collected lyrics from the
 
 //MediaLibrarySize_Summary = 'Estimated library size: %s';
 
-Options_LyricPriority_LYRICWIKI   = 'LyricWiki (recommended)';
-Options_LyricPriority_CHARTLYRICS = 'ChartLyrics (beta)';
-Hint_LyricPriorities              = 'Search online for lyrics. Current settings: '+ #13#10 + '%s';
+//Options_LyricPriority_LYRICWIKI   = 'LyricWiki (recommended)';
+//Options_LyricPriority_CHARTLYRICS = 'ChartLyrics (beta)';
+//Hint_LyricPriorities              = 'Search online for lyrics. Current settings: '+ #13#10 + '%s';
 
 ProgressForm_DefaultHint = 'Some functions are disabled during this process. You can cancel the current operation at any time.';
 ProgressForm_DefaultAction  = 'Nemp is updating your media library right now.';
@@ -1083,7 +1054,7 @@ ProgressForm_SearchFiles    = 'Nemp is searching your computer for new music fil
 ProgressForm_SearchFilesPlaylist = 'Nemp is searching your computer for new files to add to your playlist.';
 ProgressForm_RefreshFiles   = 'Nemp is refreshing your media library.';
 ProgressForm_CleanUp        = 'Nemp is searching for missing files in your media library. ';
-ProgressForm_Searchlyrics   = 'Nemp is searching for lyrics for your music files.';
+// ProgressForm_Searchlyrics   = 'Nemp is searching for lyrics for your music files.';
 ProgressForm_SearchTags     = 'Nemp is searching for some additional tags for your music files.';
 ProgressForm_UpdateMetaData = 'Nemp is updating the meta data (ID3tags) of your music files.';
 ProgressForm_DeleteFiles    = 'Nemp is removing the selected files from your media library.';
@@ -1096,6 +1067,7 @@ ProgressForm_CompleteCaption = 'Nemp: Process completed.';
 Playlist_StartSearchingFiles  = 'Searching for music files ...';
 Playlist_SearchingNewFilesDir    = 'Searching for music files ... %s';
 Playlist_SearchingNewFilesComplete = 'Searching for music files completed. The new files have been added to your playlist.';
+Playlist_SearchingNewFilesCompleteNothingFound = 'Searching for music files completed. No music files could be found.';
 
 HTTP_Connection_Error = 'Error connecting %s: %s';
 
@@ -1135,6 +1107,9 @@ PlaylistManager_CheckOK    = 'Check: Ok';
 Playlist_Saved             = 'Playlist saved.';
 PlaylistManager_Saved      = 'Playlist saved: "%s"';
 
+PlaylistManager_CreatePlaylistFirstDragDrop = 'Please create a new favorite playlist first.';
+PlaylistManager_CreatePlaylistFirstSave = 'Saving is not possible. Please select favorite playlist first or create a new one.';
+
 PlaylistAutoDelay = 'A little break before the next track starts.' + #13#10#13#10 + 'You can change this behavior in the player settings.';
 
 PlaylistDuplicates_NoDuplicatesFound = 'No duplicates found in the playlist.';
@@ -1168,7 +1143,7 @@ DragDropHintTargetPlaylist = 'Drop the files into the Playlist.';
 DragDropLibraryInternFailCategory = 'You can''t add files into this category';
 //DragDropLibraryCategory = 'Add to Media Library, category %1';
 DragDropLibraryCategory = 'Add to category %1';
-DragDropLibraryCategories = 'Add to categories %1';
+// DragDropLibraryCategories = 'Add to categories %1';
 
 DragDropPlaylistAdd = 'Add to Playlist here';
 DragDropPlaylistMove = 'Move here';
@@ -1188,12 +1163,35 @@ WriteAccessNotPossibleUserPath = 'Nemp can''t write into the Users appdata path 
   + #13#10
   + #13#10 + 'Please refer to the documentation for further details.';
 
-WriteAccessNotPossiblePortable = 'Nemp can''t write into the current directory and therefore can''t save any data (including settings, playlist and the media library). '
-  + #13#10
-  + #13#10 + 'You may try Nemp using in "installed mode" by deleting the file "UseLocalData.cfg". Otherwise, you should move Nemp into your "portable apps" directory.'
-  + #13#10
-  + #13#10 + 'Please refer to the documentation for further details.';
+//WriteAccessNotPossiblePortable = 'Nemp can''t write into the current directory and therefore can''t save any data (including settings, playlist and the media library). '
+//  + #13#10
+//  + #13#10 + 'You may try Nemp using in "installed mode" by deleting the file "UseLocalData.cfg". Otherwise, you should move Nemp into your "portable apps" directory.'
+//  + #13#10
+//  + #13#10 + 'Please refer to the documentation for further details.';
+
+LibConfigHint_Root = 'Root layer: %s';
+LibConfigHint_LayerMain = 'Layer %s';
+LibConfigHint_LayerSorting = 'Sorted by: ';
+LibConfigText_LayerSortedBy = '%s (by %s)';
+
+//function MainVSTEmptyMessage(state: Integer): String;
 
 implementation
+
+(*
+function MainVSTEmptyMessage(state: Integer): String;
+begin
+  case state of
+    0: result := ;
+    1: result := ;
+    2: result := ;
+    3: result := ;
+    4: result := ;
+    5: result := ;
+
+
+  end;
+
+end*)
 
 end.

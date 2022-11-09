@@ -42,8 +42,8 @@ iniFiles, jpeg, NempPanel, Classes, oneinst, SkinButtons, PNGImage, ProgressShap
 
 Nemp_ConstantsAndTypes, PartyModeClass{$IFDEF USESTYLES}, vcl.themes, vcl.styles, Vcl.CheckLst {$ENDIF};
 
-const MAX_MENUIMAGE_INDEX = 43;
-      MAX_PLAYLIST_IMAGE_INDEX = 23;
+const MAX_MENUIMAGE_INDEX = 42;
+      MAX_PLAYLIST_IMAGE_INDEX = 24;
 
 type
   // Achtung: Reihenfolge hier jetzt so lassen!!
@@ -71,6 +71,7 @@ type
   // Typ Zur Farbverwaltung des Skins
   TNempColorScheme = record
       FormCL: TColor;
+      CoverFlowCl: TColor;
       //TabTextCL: TColor;
       //TabTextBackGroundCL: TColor;
       SpecTitelCL: TColor;
@@ -364,7 +365,6 @@ type
 
         NempPartyMode: TNempPartyMode;
 
-        // FormBuilder: TNempFormBuildOptions;
         FormLayout: TNempLayout;
 
         property ControlProgressLoaded: Boolean read fControlProgressLoaded;
@@ -439,18 +439,20 @@ const CustomColorNames : Array [0..15] of string = ('ColorA','ColorB','ColorC','
 implementation
 
 
-uses NempMainUnit, Details, OptionsComplete, Hilfsfunktionen, spectrum_vis,
+uses NempMainUnit, Details, OptionsComplete, Hilfsfunktionen, spectrum_vis, System.StrUtils,
     SplitForm_Hilfsfunktionen, PlaylistUnit, AuswahlUnit, MedienlisteUnit, ExtendedControlsUnit,
     VSTEditControls, MedienBibliothekClass, TagClouds, Systemhelper, DeleteSelect;
 
 function GetSkinDirFromSkinName(aName: String): String;
 begin
-    result := StringReplace(aName,
+  result := ExtractFilePath(ParamStr(0)) + 'Skins\' + aName;
+
+    {result := StringReplace(aName,
               '<public> ', ExtractFilePath(ParamStr(0)) + 'Skins\', []);
 
     result := StringReplace(result,
               '<private> ', GetShellFolder(CSIDL_APPDATA) + '\Gausi\Nemp\Skins\',[]);
-
+    }
 end;
 
 constructor TNempSkin.create;
@@ -769,6 +771,10 @@ begin
         BlendFaktorTagCloud2    := Ini.ReadInteger('Options','BlendFaktorTagCloud2'      , 100);
 
         SkinColorScheme.FormCL                := StringToColor(Ini.ReadString('Colors','FormCL'               , 'clWindow'   ));
+        if ini.ValueExists('Colors','CoverFlowCl') then
+          SkinColorScheme.CoverFlowCl           := StringToColor(Ini.ReadString('Colors','CoverFlowCl'          , 'clWindow'   ))
+        else
+          SkinColorScheme.CoverFlowCl := SkinColorScheme.FormCL;
         SkinColorScheme.SpecTitelCL           := StringToColor(Ini.ReadString('Colors','SpecTitelCL'          , 'clWindowText'     ));
         SkinColorScheme.SpecTimeCL            := StringToColor(Ini.ReadString('Colors','SpecTimeCL'           , 'clWindowText'  ));
         if ini.ValueExists('Colors','SpecArtistCL') then
@@ -979,7 +985,8 @@ begin
                       Nemp_MainForm.MenuSkinImageList.AddMasked(ButtonTmp,Buttontmp.Canvas.Pixels[0,0]);
                   end;
                   Nemp_MainForm.Nemp_MainMenu             .Images := Nemp_MainForm.MenuSkinImageList;
-                  Nemp_MainForm.Medialist_Browse_PopupMenu.Images := Nemp_MainForm.MenuSkinImageList;
+                  Nemp_MainForm.Medialist_Collection_PopupMenu.Images := Nemp_MainForm.MenuSkinImageList;
+                  Nemp_MainForm.Medialist_Category_PopupMenu.Images := Nemp_MainForm.MenuSkinImageList;
                   Nemp_MainForm.Medialist_View_PopupMenu  .Images := Nemp_MainForm.MenuSkinImageList;
                   Nemp_MainForm.PlayListPOPUP             .Images := Nemp_MainForm.MenuSkinImageList;
                   Nemp_MainForm.Player_PopupMenu          .Images := Nemp_MainForm.MenuSkinImageList;
@@ -999,7 +1006,8 @@ end;
 procedure TNempSkin.SetDefaultMenuImages;
 begin
     Nemp_MainForm.Nemp_MainMenu             .Images := Nemp_MainForm.MenuImages;
-    Nemp_MainForm.Medialist_Browse_PopupMenu.Images := Nemp_MainForm.MenuImages;
+    Nemp_MainForm.Medialist_Collection_PopupMenu.Images := Nemp_MainForm.MenuImages;
+    Nemp_MainForm.Medialist_Category_PopupMenu.Images := Nemp_MainForm.MenuImages;
     Nemp_MainForm.Medialist_View_PopupMenu  .Images := Nemp_MainForm.MenuImages;
     Nemp_MainForm.PlayListPOPUP             .Images := Nemp_MainForm.MenuImages;
     Nemp_MainForm.Player_PopupMenu          .Images := Nemp_MainForm.MenuImages;
@@ -1611,15 +1619,12 @@ begin
 
     if NotTheFirstActivation then
         // Dont do this on startup. On some systems the complete Desktop is painted
-        MedienBib.NewCoverFlow.SetColor(SkinColorScheme.FormCL);
+        MedienBib.NewCoverFlow.SetColor(SkinColorScheme.CoverFlowCl);
 
     Color := SkinColorScheme.FormCL;
-    // yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-    //MainSplitter.Color := SkinColorScheme.SplitterColor;
-    //SubSplitter1.Color := SkinColorScheme.SplitterColor;
-    //SubSplitter2.Color := SkinColorScheme.SplitterColor;
     SplitterBrowse.Color := SkinColorScheme.SplitterColor;
     SplitterFileOverview.Color := SkinColorScheme.SplitterColor;
+    NempLayout.SplitterColor := NempSkin.SkinColorScheme.SplitterColor;
 
     LyricsMemo.Color := SkinColorScheme.MemoBackGroundCL;
     LyricsMemo.Font.Color := SkinColorScheme.MemoTextCL;
@@ -1766,7 +1771,8 @@ begin
 
         Nemp_MainMenu             .Images := MenuImages;
         Medialist_View_PopupMenu  .Images := MenuImages;
-        Medialist_Browse_PopupMenu.Images := MenuImages;
+        Medialist_Collection_PopupMenu.Images := MenuImages;
+        Medialist_Category_PopupMenu.Images := MenuImages;
         PlayListPOPUP             .Images := MenuImages;
         Player_PopupMenu          .Images := MenuImages;
         PopupTools                .Images := MenuImages;
@@ -1920,18 +1926,15 @@ begin
 
   if NotTheFirstActivation then
       // Dont do this on startup. On some systems the complete Desktop is painted white
-      MedienBib.NewCoverFlow.SetColor(clWhite);
-  
+      MedienBib.NewCoverFlow.SetColor(MedienBib.NewCoverFlow.Settings.DefaultColor);
+
   // Weitere Eigenschaften der Form setzen
   with Nemp_MainForm do
   begin
     Color := clBtnFace;
-    // yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-    //MainSplitter.Color := clBtnFace;
-    //SubSplitter1.Color := clBtnFace;
-    //SubSplitter2.Color := clBtnFace;
     SplitterBrowse.Color := clBtnFace;
     SplitterFileOverview.Color := clBtnFace;
+    NempLayout.SplitterColor := clBtnFace;
 
     LyricsMemo.Color := clWindow;
     LyricsMemo.Font.Color := clWindowText;

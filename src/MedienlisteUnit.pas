@@ -81,7 +81,7 @@ type
 
     ResizeFlag: Cardinal;
     procedure WMWindowPosChanging(var Message: TWMWINDOWPOSCHANGING); message WM_WINDOWPOSCHANGING;
-    Procedure WMDropFiles (Var aMsg: tMessage);  message WM_DROPFILES;
+    //Procedure WMDropFiles (Var aMsg: tMessage);  message WM_DROPFILES;
   public
     { Public-Deklarationen }
     // Resizing-Flag: On WMWindowPosChanging the RelativPositions must be changed
@@ -112,13 +112,6 @@ begin
   Width  := BWidth  ;
 
   PositionCloseImage(CloseImageM, Nemp_MainForm.MedialistPanel);
-  {Nemp_MainForm.MedienlisteFillPanel.Width := Nemp_MainForm.MedialistPanel.Width -  Nemp_MainForm.MedienlisteFillPanel.Left - 16;
-  CloseImageM.Left := Nemp_MainForm.MedialistPanel.Width - CloseImageM.Width;// - 10;
-  CloseImageM.Top := 3;
-  CloseImageM.Parent := Nemp_MainForm.MedialistPanel;
-  CloseImageM.BringToFront;
-  }
-
   SetRegion(ContainerPanelMedienBibForm, self, NempRegionsDistance, handle);
 
   // Das ist nötig, um z.B. zu korrigieren, dass die Form komplett unter Form1 versteckt ist!!
@@ -166,11 +159,6 @@ end;
 procedure TMedienlisteForm.FormActivate(Sender: TObject);
 begin
   PositionCloseImage(CloseImageM, Nemp_MainForm.MedialistPanel);
-  {Nemp_MainForm.MedienlisteFillPanel.Width := Nemp_MainForm.MedialistPanel.Width - Nemp_MainForm.MedienlisteFillPanel.Left - 16;
-  CloseImageM.Left := Nemp_MainForm.MedialistPanel.Width - CloseImageM.Width;
-  CloseImageM.Top := 3;
-  CloseImageM.Parent := Nemp_MainForm.MedialistPanel;
-  CloseImageM.BringToFront;}
 end;
 
 procedure TMedienlisteForm.FormClose(Sender: TObject;
@@ -203,7 +191,7 @@ begin
   with Nemp_MainForm do
   begin
     NempOptions.FormPositions[fNempFormID].Visible := False;
-    actSplitToggleTitleList.Checked := NempOptions.FormPositions[fNempFormID].Visible;
+    actToggleTitleList.Checked := NempOptions.FormPositions[fNempFormID].Visible;
   end;
   close;
 end;
@@ -313,11 +301,13 @@ begin
   Message.Result := 0;
 end;
 
+(*
 Procedure TMedienlisteForm.WMDropFiles (Var aMsg: tMessage);
 Begin
     Inherited;
     Handle_DropFilesForLibrary(aMsg);
 end;
+*)
 
 
 

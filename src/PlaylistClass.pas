@@ -6,7 +6,7 @@
 
     ---------------------------------------------------------------
     Nemp - Noch ein Mp3-Player
-    Copyright (C) 2005-2019, Daniel Gaussmann
+    Copyright (C) 2005-2022, Daniel Gaussmann
     http://www.gausi.de
     mail@gausi.de
     ---------------------------------------------------------------
@@ -291,6 +291,7 @@ type
       procedure PlayPreviousFile(aUserinput: Boolean = False);
       procedure PlayFocussed(MainIndex, CueIndex: Integer);
       procedure PlayAgain(ForcePlay: Boolean = False);
+      procedure PreparePlayAgain;
       procedure Pause;
       procedure Stop;
 
@@ -796,6 +797,16 @@ begin
   Play(nextIdx, Player.FadingInterval, false, 0);
 end;
 
+procedure TNempPlaylist.PreparePlayAgain;
+begin
+   if not AcceptInput then exit;
+  Player.stop(Player.LastUserWish = USER_WANT_PLAY);
+  if assigned(fPlayingFile) then
+    Player.Play(fPlayingFile, Player.FadingInterval, False)
+  else
+    Play(0, Player.FadingInterval, False);
+end;
+
 
 procedure TNempPlaylist.PlayNextFile(aUserinput: Boolean = False);
 var sPos: Double;
@@ -1117,18 +1128,20 @@ procedure TNempPlaylist.Search(aString: String; SearchNext: Boolean = False);
 var Keywords: TStringList;
     i: Integer;
 begin
-    Keywords := ExplodeWithQuoteMarks(' ', aString);
-
+  Keywords := TStringList.Create;
+  try
+    ExplodeWithQuoteMarks(' ', aString, Keywords);
     for i := 0 to Playlist.Count - 1 do
-        Playlist[i].IsSearchResult := AudioFileMatchesKeywordsPlaylist(Playlist[i], Keywords);
-
+      Playlist[i].IsSearchResult := AudioFileMatchesKeywordsPlaylist(Playlist[i], Keywords);
+  finally
     Keywords.Free;
+  end;
 
-    if assigned(fOnFilePropertiesChanged) then
-        fOnFilePropertiesChanged(Self);
+  if assigned(fOnFilePropertiesChanged) then
+    fOnFilePropertiesChanged(Self);
 
-    if assigned(fOnSearchResultsChanged) then
-        fOnSearchResultsChanged(Self);
+  if assigned(fOnSearchResultsChanged) then
+    fOnSearchResultsChanged(Self);
 end;
 
 
@@ -1222,9 +1235,9 @@ begin
             // todo
             if ReloadDataFromFile then
             begin
-                if NempOptions.UseCDDB then
-                    AudioFile.GetAudioData(AudioFile.Pfad, GAD_CDDB)
-                else
+                //if NempOptions.UseCDDB then
+                //    AudioFile.GetAudioData(AudioFile.Pfad, GAD_CDDB)
+                //else
                     AudioFile.GetAudioData(AudioFile.Pfad, 0);
             end;
         end;

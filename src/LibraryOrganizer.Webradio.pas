@@ -1,3 +1,35 @@
+{
+
+    Unit LibraryOrganizer.Webradio
+
+    - Webradio-Class for the new (2022) MediaLibrary concept with Categories
+      and different Layers in the TreeView
+
+    ---------------------------------------------------------------
+    Nemp - Noch ein Mp3-Player
+    Copyright (C) 2005-2022, Daniel Gaussmann
+    http://www.gausi.de
+    mail@gausi.de
+    ---------------------------------------------------------------
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+
+    See license.txt for more information
+
+    ---------------------------------------------------------------
+}
+
 unit LibraryOrganizer.Webradio;
 
 interface
@@ -41,6 +73,7 @@ type
       function MatchPrefix(aPrefix: String): Boolean; override;
       function ComparePrefix(aPrefix: String): Integer; override;
       function IndexOf(aCollection: TAudioCollection): Integer; override;
+      function PerformSearch(aKeyword: String; ParentAreadyMatches: Boolean): Boolean; override;
 
       procedure Analyse(recursive, ForceAnalysis: Boolean); override; // empty
       procedure Sort(doRecursive: Boolean = True); override; // empty
@@ -170,6 +203,13 @@ begin
     or AnsiContainsText(fName, aPrefix);
 end;
 
+function TAudioWebradioCollection.PerformSearch(aKeyword: String;
+  ParentAreadyMatches: Boolean): Boolean;
+begin
+  result := AnsiContainsText(fKey, aKeyword)
+    or AnsiContainsText(fName, aKeyword);
+end;
+
 function TAudioWebradioCollection.ComparePrefix(aPrefix: String): Integer;
 begin
   if MatchPrefix(aPrefix) then
@@ -254,8 +294,8 @@ begin
       awc.fBitrate   := 0;
       awc.fGenre     := '';
       awc.fSortIndex := 0;
-
       awc.fKey := '';
+      awc.fStation := Nil;
       break;
     end;
   end;

@@ -37,7 +37,7 @@ uses Windows, Classes, Controls, StdCtrls, Forms, SysUtils, ContNrs, VirtualTree
     NempAudioFiles, Nemp_ConstantsAndTypes, Nemp_RessourceStrings, dialogs, CoverHelper,
     MyDialogs, System.UITypes, math, Vcl.ExtCtrls, Vcl.Graphics, RatingCtrls, SkinButtons,
     LibraryOrganizer.Base, LibraryOrganizer.Files, LibraryOrganizer.Playlists, LibraryOrganizer.Webradio,
-    MainFormLayout;
+    MainFormLayout, System.StrUtils;
 
 type TWindowSection = (ws_none, ws_Library, ws_Playlist, ws_Controls);
 
@@ -56,7 +56,6 @@ type TWindowSection = (ws_none, ws_Library, ws_Playlist, ws_Controls);
     procedure HandleNewConnectedDrive;
 
     procedure FillTreeView(MP3Liste: TAudioFileList; AudioFile:TAudioFile);
-    procedure FillTreeViewQueryTooShort;
     procedure RefreshPlaylistVSTHeader;
 
     function GetDropWindowSection(aControl: TWinControl): TWindowSection;
@@ -74,7 +73,7 @@ type TWindowSection = (ws_none, ws_Library, ws_Playlist, ws_Controls);
     // Switch MediaLibrary: Umschalten zwischen Listen/Coverflow/Tagwolke
     procedure SwitchMediaLibrary(NewMode: Integer);
     // SwitchBrowsePanel: entsprechendes Anzeigen der Liste
-    procedure SwitchBrowsePanel(NewMode: Integer);
+    procedure SwitchBrowsePanel(NewMode: Integer; NempStarting: Boolean = False);
 
     procedure SetCoverFlowScrollbarRange(aCount: Integer); overload;
     procedure RestoreCoverFlowAfterSearch(ForceUpdate: Boolean = False);
@@ -88,8 +87,8 @@ type TWindowSection = (ws_none, ws_Library, ws_Playlist, ws_Controls);
     function HandleIgnoreRule(aTag: String): Boolean;
     function HandleMergeRule(aTag: String; out newTag: String): Boolean;
     // Select all files with the same path as MedienBib.CurrentAudioFile
-    function GetListOfAudioFileCopies(Original: TAudioFile; Target: TAudioFileList): Boolean;
-    procedure CorrectVCLAfterAudioFileEdit(aFile: TAudioFile; CheckTrees: Boolean=False);
+    function GetListOfAudioFileCopies(Original: TAudioFile; Target: TAudioFileList; NotifyDetailForm: Boolean = True): Boolean;
+    procedure CorrectVCLAfterAudioFileEdit(aFile: TAudioFile; IncludeDetailForm: Boolean = True);
     procedure SyncAudioFilesWith(aAudioFile: TAudioFile);
     procedure DoSyncStuffAfterTagEdit(aAudioFile: TAudiofile; backupTag: UTF8String);
 
@@ -134,7 +133,8 @@ uses NempMainUnit, Splash, BibSearch, TreeHelper,  GnuGetText,
     CDOpenDialogs, LowBattery, PlayWebstream, Taghelper, MedienbibliothekClass,
     PlayerLog, progressUnit, Hilfsfunktionen, EffectsAndEqualizer, MainFormBuilderForm,
     ReplayGainProgress, NewMetaFrame, WebQRCodes, PlaylistEditor, NewFavoritePlaylist,
-    AudioDisplayUtils, PlaylistDuplicates, LibraryOrganizer.Configuration, LibraryOrganizer.Configuration.NewLayer;
+    AudioDisplayUtils, PlaylistDuplicates, LibraryOrganizer.Configuration.NewLayer,
+    fChangeFileCategory, fConfigErrorDlg;
 
 procedure CorrectVolButton;
 begin
@@ -261,29 +261,8 @@ begin
 
                       FSplash.StatusLBL.Caption := (SplashScreen_NewDriveConnected2);
                       FSplash.Update;
-
-
                       MedienBib.ReBuildCategories;
                       ReFillBrowseTrees(True);
-                      {
-
-                      jetzt weniger zu tun?
-                      einfach nur den "C:\"-Key der Collections ändern (falls Verzeichnis-Anzeige)?
-
-                      // todo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-                      // Anzeige aktualisieren
-                      case MedienBib.BrowseMode of
-                          0 : MedienBib.ReBuildBrowseLists;
-
-                          1: begin
-                              MedienBib.ReBuildCoverList;
-                              MedienBib.NewCoverFlow.ClearTextures;
-                              SetCoverFlowScrollbarRange(MedienBib.CoverViewList);
-                              CoverScrollbarChange(Nil);
-                          end;
-
-                      end;
-                      }
 
                   FSplash.Close;
                   Nemp_MainForm.Enabled := True;
@@ -333,16 +312,11 @@ begin
         if (Not MedienBib.AnzeigeListIsCurrentlySorted) then
             VST.Header.SortColumn := -1
         else
-            VST.Header.SortColumn := GetColumnIDfromContent(VST, MedienBib.Sortparams[0].Tag);
+            VST.Header.SortColumn := MedienBib.Sortparams[0].Tag;
 
 
-        if (MP3Liste.Count = 0) then
-        begin
-            // just add a Dummyfile showing "No results"
-            VST.AddChild(Nil, MedienBib.BibSearcher.DummyAudioFile);
-            ShowVSTDetails(Nil);
-        end else
-        begin
+        VST.EmptyListMessage := MedienBib.BibSearcher.EmptyListMessage;
+
             for i := 0 to MP3Liste.Count-1 do
                 VST.AddChild(Nil, MP3Liste.Items[i]);
 
@@ -384,23 +358,8 @@ begin
                 // no file in view
                 ShowVSTDetails(Nil);
             end;
-        end;
 
         VST.EndUpdate;
-    end;
-end;
-
-
-procedure FillTreeViewQueryTooShort;
-begin
-    with Nemp_MainForm do
-    begin
-        MedienBib.BibSearcher.DummyAudioFile.Titel := MainForm_SearchQueryTooShort;
-        VST.BeginUpdate;
-        VST.Clear;
-        VST.AddChild(Nil, MedienBib.BibSearcher.DummyAudioFile);
-        VST.EndUpdate;
-        ShowVSTDetails(Nil);
     end;
 end;
 
@@ -751,16 +710,18 @@ begin
     end;
 end;
 
-procedure SwitchBrowsePanel(NewMode: Integer);
+procedure SwitchBrowsePanel(NewMode: Integer; NempStarting: Boolean = False);
   function CanShowSelectionPnl: Boolean;
   begin
     result := Nemplayout.ShowBibSelection;
   end;
 begin
-    Nemp_MainForm.CloudViewer.Clear;
-    MedienBib.NewCoverFlow.Clear;
-    Nemp_MainForm.ArtistsVST.Clear;
-    Nemp_MainForm.AlbenVST.Clear;
+    if not NempStarting then begin
+      Nemp_MainForm.CloudViewer.Clear;
+      MedienBib.NewCoverFlow.Clear;
+      Nemp_MainForm.ArtistsVST.Clear;
+      Nemp_MainForm.AlbenVST.Clear;
+    end;
 
     with Nemp_MainForm do
     begin
@@ -783,8 +744,6 @@ begin
         case Newmode of
             0: begin
                 // Zeige Browse-Listen
-
-                // MedienBib.Count > 0 .....???  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
                 EmptyLibraryPanel.Parent := TreePanel;
                 if Nemplayout.ShowBibSelection then
                   TreePanel.ShowPanel;
@@ -797,17 +756,6 @@ begin
                     ReSizeBrowseTrees;
                 end;
 
-                //PanelCoverBrowse.visible := False;
-                //PanelStandardBrowse.Visible := MedienBib.Count > 0;
-                //PanelTagCloudBrowse.Visible := False;
-                //ShowTagCloudSearch(False);
-
-                //PanelStandardBrowse.Left := 2;        // das ist doch eh alClient ???????
-                //PanelStandardBrowse.Width := AuswahlPanel.Width - 4;
-                //PanelStandardBrowse.Top := 2;
-                //PanelStandardBrowse.Height := GRPBOXArtistsAlben.Height - 4;
-                //PanelStandardBrowse.Anchors := [akleft, aktop, akright, akBottom];
-
                 // TabButtons-Glyphs neu setzen
                 TabBtn_Browse0.GlyphLine := 1;
                 TabBtn_CoverFlow0.GlyphLine := 0;
@@ -817,7 +765,6 @@ begin
                 TabBtn_CoverFlow0.Refresh;
             end;
             1: begin
-                //AlbenVST.Clear;
                 // Zeige CoverFlow
                 EmptyLibraryPanel.Parent := CoverFlowPanel;
 
@@ -828,19 +775,6 @@ begin
                 if NempOptions.AnzeigeMode = 0 then
                   NempLayout.ReAlignMainForm;
 
-                // MedienBib.NewCoverFlow.SetNewHandle(PanelCoverBrowse.Handle);
-
-                //PanelStandardBrowse.Visible := False;
-                //PanelTagCloudBrowse.Visible := False;
-                //PanelCoverBrowse.Visible := MedienBib.Count > 0;
-                //ShowTagCloudSearch(False);
-
-                //PanelCoverBrowse.Left := 2;
-                //PanelCoverBrowse.Width := AuswahlPanel.Width - 4;
-                //PanelCoverBrowse.Top := 2;
-                //PanelCoverBrowse.Height := GRPBOXArtistsAlben.Height - 4;
-                //PanelCoverBrowse.Anchors := [akleft, aktop, akright, akBottom];
-
                 // TabButtons-Glyphs neu setzen
                 TabBtn_Browse1.GlyphLine := 0;
                 TabBtn_CoverFlow1.GlyphLine := 1;
@@ -850,7 +784,6 @@ begin
                 TabBtn_CoverFlow1.Refresh;
             end;
             2: begin
-                //AlbenVST.Clear;
                 EmptyLibraryPanel.Parent := CloudPanel;
 
                 TreePanel.HidePanel;
@@ -860,17 +793,6 @@ begin
                 if NempOptions.AnzeigeMode = 0 then
                   NempLayout.ReAlignMainForm;
 
-                {PanelStandardBrowse.Visible := False;
-                PanelTagCloudBrowse.Visible := MedienBib.Count > 0;
-                PanelCoverBrowse.Visible := False;
-                // ShowTagCloudSearch(True);
-
-                PanelTagCloudBrowse.Left := 2;
-                PanelTagCloudBrowse.Width := AuswahlPanel.Width - 4;
-                PanelTagCloudBrowse.Top := 2;
-                PanelTagCloudBrowse.Height := GRPBOXArtistsAlben.Height - 4;
-                PanelTagCloudBrowse.Anchors := [akleft, aktop, akright, akBottom];
-                 }
                 // TabButtons-Glyphs neu setzen
                 TabBtn_Browse2.GlyphLine := 0;
                 TabBtn_CoverFlow2.GlyphLine := 0;
@@ -929,15 +851,27 @@ begin
 end;
 
 procedure ReTranslateNemp(LanguageCode: String);
-var i: Integer;
 begin
     with Nemp_MainForm do
     begin
         Uselanguage(LanguageCode);
 
+        if AnsiStartsText('de', LanguageCode) then
+          Application.HelpFile := ExtractFilePath(Paramstr(0)) + 'nemp_de.chm'
+        else
+          Application.HelpFile := ExtractFilePath(Paramstr(0)) + 'nemp_en.chm';
+
+        if not FileExists(Application.HelpFile) then
+          Application.HelpFile := ExtractFilePath(Paramstr(0)) + 'nemp_en.chm';
+
+        if not FileExists(Application.HelpFile) then
+          Application.HelpFile := '';
+
         //c := Nemp_MainForm.CBHeadSetControlInsertMode.ItemIndex;
         //BackupComboboxes(Nemp_MainForm);
         ReTranslateComponent (Nemp_MainForm);
+        RefreshVSTDetailsTimer.Enabled := False;
+        RefreshVSTDetailsTimer.Enabled := True;
         //RestoreComboboxes(Nemp_MainForm);
 
         //Nemp_MainForm.CBHeadSetControlInsertMode.ItemIndex := c;
@@ -945,6 +879,15 @@ begin
         DisplayPlayerMainTitleInformation(True);
         DisplayHeadsetTitleInformation(True);
         ShowVSTDetails(NempPlayer.CurrentFile, SD_PLAYER);
+
+        LblEmptyLibraryHint.Caption := MainForm_LibraryIsEmpty;
+        VST.EmptyListMessage := MedienBib.BibSearcher.EmptyListMessage;
+        VST.Invalidate;
+
+        PlaylistVST.EmptyListMessage := MainForm_PlaylistIsEmpty;
+        PlaylistVST.Invalidate;
+
+                                        //        EmptyListMessage  dummaudiofile
 
         // refresh Hints und sonstige Anzeigen
         case NempPlaylist.WiedergabeMode of
@@ -973,6 +916,8 @@ begin
         ReTranslateComponent (MedienlisteForm );
         ReTranslateComponent (ProgressFormLibrary    );
         ReTranslateComponent (ProgressFormPlaylist   );
+
+        if assigned(ConfigErrorDlg) then ReTranslateComponent(ConfigErrorDlg);
 
         if assigned(FNewPicture          ) then ReTranslateComponent(FNewPicture         );
         if assigned(FSplash              ) then ReTranslateComponent(FSplash             );
@@ -1029,7 +974,6 @@ begin
             RestoreComboboxes(FormStreamVerwaltung);
         end;
         if assigned(ShutDownForm         ) then ReTranslateComponent(ShutDownForm        );
-        //if assigned(HeadsetControlForm   ) then ReTranslateComponent(HeadsetControlForm  );
         if assigned(BirthdayForm         ) then ReTranslateComponent(BirthdayForm        );
         if assigned(RandomPlaylistForm   ) then
         begin
@@ -1077,29 +1021,21 @@ begin
         if assigned(PlaylistEditorForm) then ReTranslateComponent(PlaylistEditorForm);
         if assigned(NewFavoritePlaylistForm) then ReTranslateComponent(NewFavoritePlaylistForm);
 
-        if assigned(FormLibraryConfiguration) then begin
-            BackUpComboBoxes(FormLibraryConfiguration);
-            ReTranslateComponent(FormLibraryConfiguration);
-            RestoreComboboxes(FormLibraryConfiguration);
-        end;
         if assigned(FormNewLayer) then begin
             BackUpComboBoxes(FormNewLayer);
             ReTranslateComponent(FormNewLayer);
             RestoreComboboxes(FormNewLayer);
         end;
-
-         // Todo:
-        // - Alle Comboboxen auf ihren alten Itemindex zurücksetzen (also die, die schon zu Beginn gefüllt sind)
-        // - Einige Comboboxen ggf. neu füllen ("Alte suchergebnisse")
-
-        for i := 0 to Spaltenzahl - 1 do
-           VST.Header.Columns[i].Text := _(DefaultSpalten[VST.Header.Columns[i].Tag].Bezeichnung);
-        VST.Invalidate;
+        if assigned(FormChangeCategory) then begin
+            BackUpComboBoxes(FormChangeCategory);
+            ReTranslateComponent(FormChangeCategory);
+            RestoreComboboxes(FormChangeCategory);
+        end;
 
         // Categories
         ArtistsVST.Header.Columns[0].Text := TreeHeader_Categories;
-        ArtistsVST.Invalidate; // to translate Captions of Playlist- and Webradio-Category
-        AlbenVST.Invalidate; // Translate RootColelction-Captions
+        ArtistsVST.Invalidate; // Translate Captions of Playlist- and Webradio-Category
+        AlbenVST.Invalidate; // Translate RootCollection-Captions
         // Collections
         RefreshCollectionTreeHeader(MedienBib.CurrentCategory);
 
@@ -1107,10 +1043,7 @@ begin
         PlaylistPropertiesChanged(NempPlaylist);
 
         if Medienbib.BrowseMode = 1 then
-            CoverScrollbarChange(Nil); // trigger redraw of label
-
-        //if Medienbib.BrowseMode = 2 then
-        //    MedienBib.TagCloud.Paint(MedienBib.TagCloud.CurrentTagList);
+          CoverScrollbarChange(Nil); // trigger redraw of label
 
     end;
 end;
@@ -1403,7 +1336,7 @@ end;
      - Medienbib.status <= 1  (searching for new files or GetTags should be ok)
        and MedienBib.CurrentThreadFilename
 }
-function GetListOfAudioFileCopies(Original: TAudioFile; Target: TAudioFileList): Boolean;
+function GetListOfAudioFileCopies(Original: TAudioFile; Target: TAudioFileList; NotifyDetailForm: Boolean = True): Boolean;
 var bibFile: TAudioFile;
     originalPath: String;
 
@@ -1423,8 +1356,10 @@ begin
         Target.Add(NempPlayer.MainAudioFile);
 
     // 3. The Detailform-File
-    if assigned(fDetails) and NeededFile(fDetails.CurrentAudioFile) then
-        Target.Add(fDetails.CurrentAudioFile);
+    // This is a special case: The DetailForm should only be notified when there was a change
+    if assigned(fDetails) and NotifyDetailForm then //and NeededFile(fDetails.CurrentAudioFile) then
+      fDetails.AudioFileEdited(Original);
+      // Target.Add(fDetails.CurrentAudioFile);
 
     // 4. The "currentfile" from the library (this is the one displayed in the VST-Details)
     if NeededFile(Medienbib.CurrentAudioFile) then
@@ -1465,7 +1400,6 @@ end;
 
 procedure DoSyncStuffAfterTagEdit(aAudioFile: TAudiofile; backupTag: UTF8String);
 var aErr: TNempAudioError;
-    BibFile: TAudioFile;
     newTags: UTF8String;
 begin
     newTags := aAudioFile.RawTagLastFM;
@@ -1479,20 +1413,10 @@ begin
         aAudioFile.ID3TagNeedsUpdate := False;
         SyncAudioFilesWith(aAudioFile);
         // Correct GUI (player, Details, Detailform, VSTs))
-        CorrectVCLAfterAudioFileEdit(aAudioFile, True);
+        CorrectVCLAfterAudioFileEdit(aAudioFile);
 
         if MedienBib.CollectionsAreDirty(ccTagCloud) then
           SetBrowseTabWarning(True);
-
-
-        {
-          Tags im TagCloud-Modus werden "dirty" (aber auch NUR DORT)
-          QuickSearch-Strings sind nicht betroffen
-        }
-        // Update the TagCloud
-        // BibFile := MedienBib.GetAudioFileWithFilename(aAudioFile.Pfad);
-        //if assigned(BibFile) then
-        //    MedienBib.TagCloud.UpdateAudioFile(BibFile);
     end else
     begin
         aAudioFile.RawTagLastFM := backupTag;
@@ -1511,9 +1435,8 @@ end;
         PlaylistVST
         Detailform
 }
-procedure CorrectVCLAfterAudioFileEdit(aFile: TAudioFile; CheckTrees: Boolean=False);
+procedure CorrectVCLAfterAudioFileEdit(aFile: TAudioFile; IncludeDetailForm: Boolean = True);
 var OriginalPath: String;
-    bibFile: TAudioFile;
 
       function SameFile(af: TAudioFile): boolean;
       begin
@@ -1541,14 +1464,8 @@ begin
         Nemp_MainForm.ShowVSTDetails(MedienBib.CurrentAudioFile, -1);  // -1: Do not change Source (playlist/medienbib)) of audiofile
 
     // ... Detail-Form
-    if assigned(fDetails)
-        and Nemp_MainForm.AutoShowDetailsTMP
-        and SameFile(fDetails.CurrentAudioFile)
-    then
-        // Note: a call of AktualisiereDetailForm(af, SD_MEDIENBIB)
-        //       will produce some strange AVs here - so we do it quick&dirty with a timer
-        //       (Probably some issues with VST.Edited and stuff. Don't know.)
-        FDetails.ReloadTimer.Enabled := True;
+    if assigned(fDetails) and IncludeDetailForm then
+      fDetails.AudioFileEdited(aFile);
 end;
 
 procedure RepositionABRepeatButtons;
@@ -1581,12 +1498,10 @@ begin
     if assigned(FormEffectsAndEqualizer) then
     begin
         // maybe to do, for later: Disbale Effect-Controls when Headset-Controls are enabled
-        //(* !!!!!!!!!!!!!! GUI !!!!!!!!!!!!!!!!!
         FormEffectsAndEqualizer.grpBoxABRepeat   .Enabled := EnableControls;
         FormEffectsAndEqualizer.BtnABRepeatUnSet .Enabled := NempPlayer.ABRepeatActive and EnableControls;
         FormEffectsAndEqualizer.BtnABRepeatSetA  .Enabled := EnableControls;
         FormEffectsAndEqualizer.BtnABRepeatSetB  .Enabled := EnableControls;
-        //*)
     end;
 end;
 
@@ -2066,8 +1981,6 @@ begin
 end;
 
 procedure CollectionDblClick(ac: TAudioCollection; Node: PVirtualNode);
-var
-  rc: TRootCollection;
 begin
   case ac.CollectionClass of
     ccFiles: begin

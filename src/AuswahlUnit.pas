@@ -16,7 +16,7 @@
 
     ---------------------------------------------------------------
     Nemp - Noch ein Mp3-Player
-    Copyright (C) 2005-2019, Daniel Gaussmann
+    Copyright (C) 2005-2022, Daniel Gaussmann
     http://www.gausi.de
     mail@gausi.de
     ---------------------------------------------------------------
@@ -82,7 +82,7 @@ type
 
     ResizeFlag: Cardinal;
     procedure WMWindowPosChanging(var Message: TWMWINDOWPOSCHANGING); message WM_WINDOWPOSCHANGING;
-    Procedure WMDropFiles (Var aMsg: tMessage);  message WM_DROPFILES;
+    // Procedure WMDropFiles (Var aMsg: tMessage);  message WM_DROPFILES;
   public
     { Public-Deklarationen }
     // Resizing-Flag: On WMWindowPosChanging the RelativPositions must be changed
@@ -110,14 +110,7 @@ begin
   Height := BHeight ;
   Width  := BWidth  ;
 
-  // Nemp_MainForm.AuswahlFillPanel.Width := Nemp_MainForm.AuswahlPanel.Width - Nemp_MainForm.AuswahlFillPanel.Left - 16;//26;
-  // yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
   PositionCloseImage(CloseImageA, Nemp_MainForm.TreePanel);
-  {CloseImageA.Left := Nemp_MainForm.AuswahlPanel.Width - CloseImageA.Width - 2;// - 5;//10;
-  CloseImageA.Top := 4;
-  CloseImageA.Parent := Nemp_MainForm.AuswahlPanel;
-  CloseImageA.BringToFront;}
-
   SetRegion(ContainerPanelAuswahlForm, self, NempRegionsDistance, handle);
 
   // Das ist nötig, um z.B. zu korrigieren, dass die Form komplett unter Form1 versteckt ist!!
@@ -130,7 +123,6 @@ begin
      (Left + NempRegionsDistance.Right <= Nemp_MainForm.Left + Nemp_MainForm.NempRegionsDistance.Right)
   then
     NempRegionsDistance.docked := False;
-
 end;
 
 procedure TAuswahlForm.ContainerPanelAuswahlformMouseDown(Sender: TObject;
@@ -167,12 +159,6 @@ end;
 procedure TAuswahlForm.FormActivate(Sender: TObject);
 begin
   PositionCloseImage(CloseImageA, Nemp_MainForm.TreePanel);
-  {Nemp_MainForm.AuswahlFillPanel.Width := Nemp_MainForm.AuswahlPanel.Width
-                                        - Nemp_MainForm.AuswahlFillPanel.Left - 16;//26;
-  CloseImageA.Left := Nemp_MainForm.AuswahlPanel.Width - CloseImageA.Width - 2;// - 5;//10;
-  CloseImageA.Top := 4;
-  CloseImageA.Parent := Nemp_MainForm.AuswahlPanel;
-  CloseImageA.BringToFront;}
 end;
 
 procedure TAuswahlForm.FormClose(Sender: TObject;
@@ -224,7 +210,7 @@ begin
   with Nemp_MainForm do
   begin
     NempOptions.FormPositions[fNempFormID].Visible := False;
-    actSplitToggleBrowseList.Checked := NempOptions.FormPositions[fNempFormID].Visible;
+    actToggleBrowseList.Checked := NempOptions.FormPositions[fNempFormID].Visible;
   end;
   close;
 end;
@@ -331,12 +317,13 @@ begin
   Message.Result := 0;
 end;
 
-
+(*
 Procedure TAuswahlForm.WMDropFiles (Var aMsg: tMessage);
 Begin
     Inherited;
     Handle_DropFilesForLibrary(aMsg);
 end;
+*)
 
 
 procedure TAuswahlForm.FormKeyDown(Sender: TObject; var Key: Word;

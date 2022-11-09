@@ -236,8 +236,6 @@ type
       procedure ResetPlayerVCL(GetCoverWasSuccessful: boolean);
       // set the play/pause button according to the current state of the player
       procedure ActualizePlayPauseBtn(wParam, lParam: Integer);
-      // send a Message to the Deskband (set play/pause-button there as well)
-      procedure UpdateDeskband(wParam, lParam: Integer);
 
       procedure StartPrescanThread;
       function GetTimeString: String;
@@ -903,21 +901,27 @@ var count: LongWord;
     var Info: PBass_PluginInfo;
         a, j: Integer;
         tmpext: TStringList;
+        newExt: String;
     begin
-        Info := BASS_PluginGetInfo(aPlug); // get plugin info to add to the file selector filter...
-        for a := 0 to Info.formatc - 1 do
-        begin
-            // Set The OpenDialog additional, to the supported PlugIn Formats
-            Filter := Filter
-              + '|' + String(Info.Formats[a].name) + ' ' + '(' +
-              String(Info.Formats[a].exts) + ')' { , ' + fd.cFileName} + '|' + String(Info.Formats[a].exts);
-
-            //ValidExtensions
-            tmpext := Explode(';', String(Info.Formats[a].exts));
-            for j := 0 to tmpext.Count - 1 do
-                ValidExtensions.Add(StringReplace(tmpext.Strings[j],'*', '',[]));
-            FreeAndNil(tmpext);// im Explode wirds erzeugt
+      Info := BASS_PluginGetInfo(aPlug); // get plugin info to add to the file selector filter...
+      tmpext := TStringList.Create;
+      try
+        for a := 0 to Info.formatc - 1 do begin
+          // Set The OpenDialog additional, to the supported PlugIn Formats
+          Filter := Filter
+            + '|' + String(Info.Formats[a].name) + ' ' + '(' +
+            String(Info.Formats[a].exts) + ')' { , ' + fd.cFileName} + '|' + String(Info.Formats[a].exts);
+          //ValidExtensions
+          Explode(';', String(Info.Formats[a].exts), tmpext  );
+          for j := 0 to tmpext.Count - 1 do begin
+            newExt := StringReplace(tmpext.Strings[j],'*', '',[]);
+            if ValidExtensions.IndexOf(newExt) = -1 then
+              ValidExtensions.Add(newExt);
+          end;
         end;
+      finally
+        tmpext.Free;
+      end;
     end;
 
 begin
@@ -1205,7 +1209,7 @@ begin
   // hidden feature: user agent
   fNemp_BassUserAgent := NempSettingsManager.ReadString('Player', 'UserAgent', NEMP_BASS_DEFAULT_USERAGENT);
 
-  NempBirthdayTimer.UseCountDown := NempSettingsManager.ReadBool('Event', 'UseCountDown', True);
+  NempBirthdayTimer.UseCountDown := NempSettingsManager.ReadBool('Event', 'UseCountDown', False);
   NempBirthdayTimer.StartTime := NempSettingsManager.ReadTime('Event', 'StartTime', 0 );
   // NempBirthdayTimer.StartCountDownTime := Ini.ReadTime('Event', 'StartCountDownTime',0);
   NempBirthdayTimer.BirthdaySongFilename := (NempSettingsManager.ReadString('Event', 'BirthdaySongFilename', ''));
@@ -1458,8 +1462,6 @@ begin
 
     MainStream := 0;
     SlideStream := 0;
-
-    UpdateDeskband(NEMP_API_STOPPED, 0);
     ActualizePlayPauseBtn(NEMP_API_STOPPED, 0);
 end;
 
@@ -1745,7 +1747,6 @@ begin
       begin
           fstatus := PLAYER_ISPLAYING;
           SendMessage(MainWindowHandle, WM_PlayerPlay, 0, 0);
-          UpdateDeskband(NEMP_API_PLAYING, 0);
           ActualizePlayPauseBtn(NEMP_API_PLAYING, 0);
 
           if (MainAudioFile.IsFile) or (MainAudioFile.isCDDA)  then
@@ -1761,7 +1762,6 @@ begin
           if MainAudioFile.isStream then
           begin
               fStatus := PLAYER_ISPAUSED; // Das ist wichtig fürs aufwecken nach einem Suspend und einem Reinit der Engine
-              UpdateDeskband(NEMP_API_PAUSED, 0);
               ActualizePlayPauseBtn(NEMP_API_PAUSED, 0);
           end;
       end;
@@ -1792,7 +1792,6 @@ begin
         BASS_ChannelPause(MainStream);
       end;
       fStatus := PLAYER_ISPAUSED;
-      UpdateDeskband(NEMP_API_PAUSED, 0);
       ActualizePlayPauseBtn(NEMP_API_PAUSED, 0);
   end;
 
@@ -1843,7 +1842,6 @@ begin
   // and playing. => Set Flag to allow Deleting from Playlist with "AutoDelete"
   MainAudioFileIsPresentAndPlaying := True;
   fStatus := PLAYER_ISPLAYING;
-  UpdateDeskband(NEMP_API_PLAYING, 0);
   ActualizePlayPauseBtn(NEMP_API_PLAYING, 0);
 end;
 
@@ -3657,15 +3655,6 @@ begin
 end;
 
 
-procedure TNempPlayer.UpdateDeskband(wParam, lParam: Integer);
-var wnd: THandle;
-begin
-  wnd :=  FindWindow('Shell_TrayWnd', nil);
-  wnd :=  FindWindowEx(wnd, 0, 'ReBarWindow32', nil);
-  wnd :=  FindWindowEx(wnd, 0, 'TNempDeskBand', Nil);
-  SendMessage(wnd, NempDeskbandUpdateMessage, wParam, lParam);
-end;
-
 procedure TNempPlayer.ResetPlayerVCL(GetCoverWasSuccessful: boolean);
 begin
   SendMessage(MainWindowHandle, WM_ResetPlayerVCL, wParam(GetCoverWasSuccessful), 0);
@@ -3770,7 +3759,6 @@ begin
         //  BASS_ChannelPause(MainStream);
         //end;
         fStatus := PLAYER_ISPAUSED;
-        UpdateDeskband(NEMP_API_PAUSED, 0);
         ActualizePlayPauseBtn(NEMP_API_PAUSED, 0);
     end;
 end;

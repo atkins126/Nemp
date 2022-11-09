@@ -51,17 +51,19 @@ interface
 
     procedure StuffToDoAfterCreate;
 
+    procedure InitializeCoverflow;
+
 implementation
 
 uses NempMainUnit, Splash, gnugettext, PlaylistClass, PlayerClass,
     MedienbibliothekClass, Nemp_SkinSystem, Spectrum_vis,
     Nemp_ConstantsAndTypes, NempApi, NempAudioFiles, Nemp_RessourceStrings,
     MainFormHelper, UpdateUtils, SystemHelper, TreeHelper, languagecodes,
-    SplitForm_Hilfsfunktionen, DriveRepairTools,
+    SplitForm_Hilfsfunktionen, DriveRepairTools, NempCoverFlowClass,
 
     MedienListeUnit, AuswahlUnit, ExtendedControlsUnit, PlaylistUnit,
-    WindowsVersionInfo, AudioDisplayUtils,
-    Cover.ViewCache;
+    WindowsVersionInfo, AudioDisplayUtils, MyDialogs, NempHelp,
+    Cover.ViewCache, fConfigErrorDlg;
 
 
 procedure UpdateSplashScreen(status: String);
@@ -74,13 +76,9 @@ begin
 end;
 
 function LoadSettings: Boolean;
-var i: Integer;
+var colIdx: Integer;
     aMenuItem: TMenuItem;
     tmpwstr, g15path: UnicodeString;
-    // defaultAdvanced: Boolean;
-    {$IFDEF USESTYLES}
-    WinVersionInfo: TWindowsVersionInfo;
-    {$ENDIF}
 
 begin
     UpdateSplashScreen(SplashScreen_LoadingPreferences);
@@ -97,7 +95,6 @@ begin
         end;
         LoadWindowPosition; // Nemp_MainForm
 
-        //NempFormBuildOptions.LoadSettings;
         NempLayout.LoadSettings;
 
         TDrivemanager.LoadSettings;
@@ -127,23 +124,22 @@ begin
         //Playlist-Einstellungen laden
         NempPlaylist.LoadSettings;
         // MedienBib-Einstellungen laden
-
-        // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        //  MedienBib.NewCoverFlow.InitList(MedienBib.CoverViewList, MedienBib.CoverCount);
         MedienBib.LoadSettings;
         NempLayout.BrowseMode := MedienBib.BrowseMode;
 
         VSTColumns_LoadSettings(VST);
 
-        for i:=0 to Spaltenzahl-1 do
-        begin
-            aMenuItem := TMenuItem.Create(Nemp_MainForm);
-            aMenuItem.AutoHotkeys := maManual;
-            aMenuItem.AutoCheck := True;
-            aMenuItem.Tag := i;
-            aMenuItem.OnClick := VST_ColumnPopupOnClick;
-            aMenuItem.Caption := VST.Header.Columns[i].Text; // _(DefaultSpalten[s].Bezeichnung);
-            VST_ColumnPopup.Items.Insert(i, aMenuItem);
+        colIdx := VST.Header.Columns.GetFirstColumn;
+        while colIdx >= 0 do begin
+          aMenuItem := TMenuItem.Create(Nemp_MainForm);
+          aMenuItem.AutoHotkeys := maManual;
+          aMenuItem.AutoCheck := True;
+          aMenuItem.Tag := colIdx;
+          aMenuItem.OnClick := VST_ColumnPopupOnClick;
+          aMenuItem.Caption := VST.Header.Columns[colIdx].Text; // _(DefaultSpalten[s].Bezeichnung);
+          VST_ColumnPopup.Items.Insert(VST.Header.Columns[colIdx].Position, aMenuItem);
+
+          colIdx := VST.Header.Columns.GetNextColumn(colIdx);
         end;
 
         NempUpdater.LoadSettings;
@@ -172,37 +168,11 @@ begin
         MM_O_Skin_UseAdvanced.Checked := NempOptions.GlobalUseAdvancedSkin;
         PM_P_Skin_UseAdvancedSkin.Checked := NempOptions.GlobalUseAdvancedSkin;
         // Skin-MenuItems setzen
-        if (FindFirst(GetShellFolder(CSIDL_APPDATA) + '\Gausi\Nemp\Skins\'+'*',faDirectory,SR)=0) then
-        repeat
-          if (SR.Name<>'.') and (SR.Name<>'..') and ((SR.Attr AND faDirectory)= faDirectory) then
-          begin
-              tmpstr :=  StringReplace('<private> ' + Sr.Name,'&','&&',[rfReplaceAll]);
-              aMenuItem := TMenuItem.Create(Nemp_MainForm);
-              aMenuItem.AutoHotkeys := maManual;
-              aMenuItem.OnClick := SkinAn1Click;
-              aMenuItem.RadioItem := True;
-              aMenuItem.AutoCheck := True;
-              aMenuItem.GroupIndex := 3;
-              aMenuItem.Caption := tmpstr; //'<private> ' + Sr.Name;
-              PM_P_Skins.Add(aMenuItem);
-
-              aMenuItem := TMenuItem.Create(Nemp_MainForm);
-              aMenuItem.AutoHotkeys := maManual;
-              aMenuItem.OnClick := SkinAn1Click;
-              aMenuItem.RadioItem := True;
-              aMenuItem.AutoCheck := True;
-              aMenuItem.GroupIndex := 3;
-              aMenuItem.Caption := tmpstr; //'<private> ' + Sr.Name;
-              MM_O_Skins.Add(aMenuItem);
-          end;
-        until FindNext(SR)<>0;
-        FindClose(SR);
-
         if (FindFirst(ExtractFilePath(Paramstr(0)) + 'Skins\' +'*',faDirectory,SR)=0) then
         repeat
           if (SR.Name<>'.') and (SR.Name<>'..') and ((SR.Attr AND faDirectory)= faDirectory) then
           begin
-              tmpstr :=  StringReplace('<public> ' + Sr.Name,'&','&&',[rfReplaceAll]);
+              tmpstr :=  StringReplace(Sr.Name, '&', '&&', [rfReplaceAll]);
 
               aMenuItem := TMenuItem.Create(Nemp_MainForm);
               aMenuItem.AutoHotkeys := maManual;
@@ -210,7 +180,7 @@ begin
               aMenuItem.RadioItem := True;
               aMenuItem.AutoCheck := True;
               aMenuItem.GroupIndex := 3;
-              aMenuItem.Caption := tmpstr; ///'<public> ' + Sr.Name;
+              aMenuItem.Caption := tmpstr;
               PM_P_Skins.Add(aMenuItem);
 
               aMenuItem := TMenuItem.Create(Nemp_MainForm);
@@ -219,7 +189,7 @@ begin
               aMenuItem.RadioItem := True;
               aMenuItem.AutoCheck := True;
               aMenuItem.GroupIndex := 3;
-              aMenuItem.Caption := tmpstr; ///'<public> ' + Sr.Name;
+              aMenuItem.Caption := tmpstr;
               MM_O_Skins.Add(aMenuItem);
           end;
         until FindNext(SR)<>0;
@@ -375,15 +345,6 @@ begin
 
         // Optionen verarbeiten, Variablen entsprechend setzen
         actToggleStayOnTop.Checked := NempOptions.MiniNempStayOnTop;
-        AutoShowDetailsTMP := False; /// NempOptions.AutoShowDetails;
-
-        // Menüeinträge checken//unchecken
-        actSplitToggleFileOverview.Checked := NempOptions.FormPositions[nfExtendedControls].Visible;
-        actSplitTogglePlaylist.Checked  := NempOptions.FormPositions[nfPlaylist].Visible;
-        actSplitToggleTitleList.Checked := NempOptions.FormPositions[nfMediaLibrary].Visible;
-        actSplitToggleBrowseList.Checked    := NempOptions.FormPositions[nfBrowse].Visible;
-        // The Checked-Status for the Compact-Versions of these action will be done in the "NempLayout.OnAfterBuild"
-
 
         if NempOptions.FullRowSelect then
             VST.TreeOptions.SelectionOptions := VST.TreeOptions.SelectionOptions + [toFullRowSelect]
@@ -419,7 +380,7 @@ begin
             NempOptions.FontNameVBR := VST.Font.Name;
         if Screen.Fonts.IndexOf(NempOptions.FontNameCBR) = -1 then
             NempOptions.FontNameCBR := VST.Font.Name;
-        VST.Header.SortColumn := GetColumnIDfromContent(VST, MedienBib.Sortparams[0].Tag);
+        VST.Header.SortColumn := MedienBib.Sortparams[0].Tag;
 
         case NempPlaylist.WiedergabeMode of
             0: RandomBtn.Hint := (MainForm_RepeatBtnHint_RepeatAll);
@@ -446,42 +407,23 @@ begin
         Spectrum.BackColor := clBtnFace;
         // Spectrum.ScrollDelay := NempPlayer.ScrollAnzeigeDelay;
         Spectrum.DrawClear;
-        MedienBib.NewCoverFlow.ApplySettings;
+        // moved to CreateHelper.InitializeCoverflow
+        // MedienBib.NewCoverFlow.ApplySettings;
     end;
 end;
 
 procedure ApplyLayout;
-var tmpStr: String;
 begin
     NempLayout.BuildMainForm(nil);
     with Nemp_MainForm do
     begin
         // Ggf. Tray-Icon erzeugen und das erzeugen in TrayIconAdded merken
-        if NempOptions.NempWindowView in [NEMPWINDOW_TRAYONLY, NEMPWINDOW_BOTH, NEMPWINDOW_BOTH_MIN_TRAY] then
-          NempTrayIcon.Visible := True
-        else
-          NempTrayIcon.Visible := False;
-
-        NempWindowDefault := GetWindowLong(Application.Handle, GWL_EXSTYLE);
-        if NempOptions.NempWindowView = NEMPWINDOW_TRAYONLY then
-        begin
-            ShowWindow( Application.Handle, SW_HIDE );
-            SetWindowLong( Application.Handle, GWL_EXSTYLE,
-                     GetWindowLong(Application.Handle, GWL_EXSTYLE)
-                     or WS_EX_TOOLWINDOW
-                     and (not WS_EX_APPWINDOW));
-        end;
-        if NempOptions.ShowDeskbandOnStart then
-            NotifyDeskband(NempDeskbandActivateMessage);
+        NempTrayIcon.Visible := NempOptions.ShowTrayIcon;
 
         if NempOptions.Useskin then
         begin
             SetSkinRadioBox(NempOptions.SkinName);
-            tmpstr := StringReplace(NempOptions.SkinName,
-                    '<public> ', ExtractFilePath(Paramstr(0)) + 'Skins\', []);
-            tmpstr := StringReplace(tmpstr,
-                    '<private> ', GetShellFolder(CSIDL_APPDATA) + '\Gausi\Nemp\Skins\',[]);
-            Nempskin.LoadFromDir(tmpstr);
+            Nempskin.LoadFromDir(GetSkinDirFromSkinName(NempOptions.SkinName));
             NempSkin.ActivateSkin(False);
             RandomBtn.GlyphLine := NempPlaylist.WiedergabeMode;
         end else
@@ -492,7 +434,7 @@ begin
         end;
 
         // Anzeige oben links initialisieren
-        SwitchBrowsePanel(MedienBib.BrowseMode);
+        SwitchBrowsePanel(MedienBib.BrowseMode, True);
 
         TabBtn_SummaryLock.Tag       := NempOptions.VSTDetailsLock;
         TabBtn_SummaryLock.GlyphLine := NempOptions.VSTDetailsLock;
@@ -524,15 +466,6 @@ begin
                     ProcessCommandline(paramstr(1), True, True);
             end;
         end;
-
-       { case
-    RegisterDragDrop(_ControlPanel.Handle, fDropManager as IDropTarget) of
-      DRAGDROP_E_INVALIDHWND : ShowMessage('invalid');
-      DRAGDROP_E_ALREADYREGISTERED : ShowMessage('already reg');
-      E_OUTOFMEMORY : ShowMessage('outofmem');
-       S_OK: ShowMessage('ok');
-    end;  }
-
     end;
 end;
 
@@ -540,7 +473,7 @@ procedure CheckWriteAccess;
 var
   cfgIni: TMemIniFile;
 begin
-  if NempSettingsManager.WriteAccessPossible then
+    if NempSettingsManager.WriteAccessPossible then
     exit;
 
   // write access is not possible: Nemp will not function as intended
@@ -555,8 +488,13 @@ begin
     //   For that case, he can edit the UseLocalData.cfg to "ShowWarning=0"
     cfgIni := TMemIniFile.Create(ExtractFilePath(Paramstr(0)) + 'UseLocalData.cfg');
     try
-      if cfgIni.ReadBool('Settings', 'ShowWarning', True) then
-        AddErrorLog(WriteAccessNotPossiblePortable);
+      if cfgIni.ReadBool('Settings', 'ShowWarning', True) then begin
+        // AddErrorLog(WriteAccessNotPossiblePortable);
+        // TranslateMessageDlg(WriteAccessNotPossiblePortable, mtWarning, [mbOK, mbHelp], HELP_Install);
+        if not assigned(ConfigErrorDlg) then
+          Application.CreateForm(TConfigErrorDlg, ConfigErrorDlg);
+        ConfigErrorDlg.ShowModal;
+      end;
     finally
       cfgIni.Free;
     end;
@@ -593,26 +531,15 @@ begin
 
         __MainContainerPanel.ID := 'A';
         ApplyLayout;
-
         UpdateSplashScreen(SplashScreen_GenerateWindows);
 
-        //_TopMainPanel.Constraints.MinHeight := NempFormBuildOptions.MainPanelMinHeight;
-        //_TopMainPanel.Constraints.MinWidth := NempFormBuildOptions.MainPanelMinWidth;
-        //GRPBOXArtistsAlben.Height := GRPBOXPlaylist.Height;
-        //GRPBOXArtistsAlben.Anchors := [akleft, aktop, akright, akBottom];
-        // yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
         UpdateFormDesignNeu(NempOptions.AnzeigeMode);
         NempLayout.ResizeSubPanel(TreePanel, ArtistsVST, NempLayout.TreeViewRatio);
-
-        if NempSkin.isActive then
-            MedienBib.NewCoverFlow.SetColor(NempSkin.SkinColorScheme.FormCL)
-        else
-            MedienBib.NewCoverFlow.SetColor(clWhite);
 
         ReTranslateNemp(GetCurrentLanguage);
 
         if NempPlayer.MainStream = 0 then
-            ReInitPlayerVCL(False); // otherwise it has been done in player.play
+          ReInitPlayerVCL(False); // otherwise it has been done in player.play
         ReArrangeToolImages;
 
         if NempSkin.isActive then
@@ -637,6 +564,24 @@ begin
         AutoLoadBib;
         CheckWriteAccess;
     end;
+end;
+
+// InitializeCoverflow: Used in .dpr after moving the MainWindow into view
+procedure InitializeCoverflow;
+begin
+  if (ParamCount >= 1) and (ParamStr(1) = '/safemode') then
+    MedienBib.NewCoverFlow.Mode := cm_Classic
+  else
+    MedienBib.NewCoverFlow.Mode := TCoverFlowMode(NempSettingsManager.ReadInteger('MedienBib', 'CoverFlowMode', Integer(cm_OpenGL)));
+
+  if Nemp_MainForm.NempSkin.isActive then
+    MedienBib.NewCoverFlow.SetColor(Nemp_MainForm.NempSkin.SkinColorScheme.CoverFlowCl)
+  else
+    MedienBib.NewCoverFlow.SetColor(MedienBib.NewCoverFlow.Settings.DefaultColor);
+
+  MedienBib.NewCoverFlow.ApplySettings;
+  if MedienBib.BrowseMode = 1  then
+    MedienBib.NewCoverFlow.Paint(50);
 end;
 
 

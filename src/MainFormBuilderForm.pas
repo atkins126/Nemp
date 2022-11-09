@@ -1,3 +1,33 @@
+{
+
+    Unit MainFormBuilderForm
+
+    - Construction of the MainForm Layout
+
+    ---------------------------------------------------------------
+    Nemp - Noch ein Mp3-Player
+    Copyright (C) 2005-2022, Daniel Gaussmann
+    http://www.gausi.de
+    mail@gausi.de
+    ---------------------------------------------------------------
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin St, Fifth Floor, Boston, MA 02110, USA
+
+    See license.txt for more information
+
+    ---------------------------------------------------------------
+}
 unit MainFormBuilderForm;
 
 interface
@@ -7,7 +37,8 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls, MyDialogs, MainFormLayout,
   System.Generics.Collections, System.Generics.Defaults,
 
-  Nemp_ConstantsAndTypes, Vcl.ComCtrls, NempPanel, Vcl.Menus, System.IniFiles;
+  Nemp_ConstantsAndTypes, Vcl.ComCtrls, NempPanel, Vcl.Menus, System.IniFiles,
+  Vcl.Imaging.pngimage;
 
 type
 
@@ -46,7 +77,6 @@ type
     grpBoxNempConstruction: TGroupBox;
     pnlConstructionHint: TPanel;
     lblElementCount: TLabel;
-    Memo1: TMemo;
     pnlConstruction: TPanel;
     MainMenu: TMainMenu;
     mmLayout: TMenuItem;
@@ -60,8 +90,11 @@ type
     lblFileOverview: TLabel;
     cbFileOverviewMode: TComboBox;
     lblPlaylistAlwaysVisible: TLabel;
-    BtnNewLayout: TButton;
     mmExampleLayouts: TMenuItem;
+    cbShowCategorySelection: TCheckBox;
+    imgInfo: TImage;
+    BtnHelp: TButton;
+    ImgHelp: TImage;
     procedure FormCreate(Sender: TObject);
     procedure BtnApplyClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -70,8 +103,6 @@ type
     procedure BtnOKClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure cbSelectionClick(Sender: TObject);
-
-    procedure NewLayoutSplitterMoved(Sender: TObject);
     procedure AfterContainerCreated(Sender: TObject);
 
     procedure MainContainerResize(Sender: TObject);
@@ -92,9 +123,9 @@ type
     procedure mmLayoutPresetClick(Sender: TObject);
     procedure cbFileOverviewModeChange(Sender: TObject);
     procedure mmUndoClick(Sender: TObject);
+    procedure BtnHelpClick(Sender: TObject);
   private
     { Private declarations }
-    //LocalBuildOptions: TNempFormBuildOptions;
 
     TestLayout: TNempLayout;
     BackupLayout: TNempLayout;
@@ -122,7 +153,7 @@ var
 
 implementation
 
-uses Nemp_RessourceStrings, Hilfsfunktionen, gnugettext, SplitForm_Hilfsfunktionen;
+uses Nemp_RessourceStrings, Hilfsfunktionen, gnugettext, SplitForm_Hilfsfunktionen, NempHelp;
 
 {$R *.dfm}
 
@@ -132,11 +163,12 @@ const
 
 procedure TMainFormBuilder.FormCreate(Sender: TObject);
 var
-  fnIni: String;
+  fnIni, imgFile: String;
 begin
   BackupComboboxes(self);
   TranslateComponent (self);
   RestoreComboboxes(self);
+  HelpContext := HELP_FormDesigner;
 
   MainContainer.ID := 'A';
   TestLayout := TNempLayout.Create;
@@ -151,7 +183,7 @@ begin
   TestLayout.ControlsPanel   := pnlControls;
   TestLayout.MainContainer   := MainContainer;
   TestLayout.OnAfterContainerCreate := AfterContainerCreated;
-  TestLayout.OnSplitterMoved := NewLayoutSplitterMoved;
+  //TestLayout.OnSplitterMoved := NewLayoutSplitterMoved;
   TestLayout.BlockHeapControl := grpBoxNempElements;
 
   BackupLayout := TNempLayout.Create;
@@ -173,6 +205,10 @@ begin
     LayoutDefaults := Nil;
     AvailableLayouts := Nil;
   end;
+
+  imgFile := ExtractFilePath(ParamStr(0)) + 'Images\info.png';
+  if FileExists(imgFile) then
+    imgInfo.Picture.LoadFromFile(imgFile);
 
   BuildMainMenu;
 end;
@@ -319,7 +355,7 @@ var
   AllPanelsPlaced: Boolean;
 begin
   lc := MainContainer.LeafCount;
-  lblMainContainer.Visible := lc = 1;
+  lblMainContainer.Visible := False; //lc = 1;
 
   AllPanelsPlaced := (pnlTree.Parent <> grpBoxNempElements)
           and (pnlCoverflow.Parent <> grpBoxNempElements)
@@ -344,19 +380,21 @@ begin
     lblElementCount.Caption := FormBuilder_ConstructionComplete
   else
   begin
-    if lc < 7 then
-      lblElementCount.Caption := Format(FormBuilder_ElementCount, [7 - lc])
+    if lc = 1 then
+      lblElementCount.Caption := Format(FormBuilder_MainContainerCaption, [#$25E7, #$2B12])
     else
-      if lc = 7 then
-        lblElementCount.Caption := FormBuilder_ElementCountComplete
+      if lc < 7 then
+        lblElementCount.Caption := Format(FormBuilder_ElementCount, [7 - lc])
       else
-        lblElementCount.Caption := FormBuilder_ElementCountTooMany;
+        if lc = 7 then
+          lblElementCount.Caption := FormBuilder_ElementCountComplete
+        else
+          lblElementCount.Caption := FormBuilder_ElementCountTooMany;
   end;
 
   TestLayout.RefreshEditButtons(lc=7);
   TestLayout.ReNumberContainerPanels;
-
-  TestLayout.CreateBuildInstructions(Memo1.Lines);
+  // TestLayout.CreateBuildInstructions(Memo1.Lines);
 end;
 
 procedure TMainFormBuilder.RefreshFileOverViewGUI;
@@ -513,7 +551,7 @@ var
   cntSend: TNempContainerPanel;
 begin
   cntSend := Sender as TNempContainerPanel;
-
+  cntSend.BevelOuter := bvRaised;
   cntSend.OnEditButtonClick := BtnEditContainerClick;
   cntSend.OnDragOver := NempContainerDragOver;
   cntSend.OnDragDrop := NempContainerDragDrop;
@@ -539,11 +577,10 @@ begin
 end;
 
 
-procedure TMainFormBuilder.NewLayoutSplitterMoved(Sender: TObject);
+procedure TMainFormBuilder.BtnHelpClick(Sender: TObject);
 begin
-  TestLayout.CreateBuildInstructions(Memo1.Lines);
+  Application.HelpContext(Help_FormDesigner);
 end;
-
 
 procedure TMainFormBuilder.BtnApplyClick(Sender: TObject);
 begin
@@ -557,6 +594,7 @@ begin
         TestLayout.ShowFileOverview  := cbeDetails.Checked;
         // Additional Settings
         TestLayout.ShowControlCover := cbControlPanelShowCover.Checked;
+        TestLayout.ShowCategoryTree := cbShowCategorySelection.Checked;
         TestLayout.TreeviewOrientation := cbTreeViewOrientation.ItemIndex;
         TestLayout.FileOVerviewOrientation := cbFileOverviewOrientation.ItemIndex;
         TestLayout.FileOverviewMode := teFileOverViewMode(cbFileOverviewMode.ItemIndex);
@@ -569,7 +607,7 @@ begin
         NempLayout.Assign(TestLayout);
         NempLayout.BuildMainForm;
 
-        NempLayout.SaveSettings;
+        NempLayout.SaveSettings(True);
         NempSettingsManager.UpdateFile;
         // TestLayout.Clear;
         // TestLayout.BuildMainForm;
@@ -590,6 +628,7 @@ begin
   cbeDetails.Checked := TestLayout.ShowFileOverview;
   // Additional Settings
   cbControlPanelShowCover.Checked := TestLayout.ShowControlCover;
+  cbShowCategorySelection.Checked := TestLayout.ShowCategoryTree;
   cbTreeViewOrientation.ItemIndex := TestLayout.TreeviewOrientation;
   cbFileOverviewOrientation.ItemIndex := TestLayout.FileOVerviewOrientation;
   cbFileOverviewMode.ItemIndex := Integer(TestLayout.FileOverviewMode);
