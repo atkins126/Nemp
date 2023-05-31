@@ -42,31 +42,33 @@ uses Windows, Messages, Graphics, IniFiles, Forms,  Classes, Controls,
      dialogs;
 
 
-const MAXCHILDS = 10;
-      CONTROL_PANEL_HEIGHT_1 = 100;
-      CONTROL_PANEL_HEIGHT_2 = 200;
-      CONTROL_PANEL_CoverWidth = 100;
-      CONTROL_PANEL_VisualisationWidth = 140;
+const // MAXCHILDS = 10;
+      // CONTROL_PANEL_HEIGHT_1 = 100;
+      // CONTROL_PANEL_HEIGHT_2 = 200;
+      // CONTROL_PANEL_CoverWidth = 100;
+      // CONTROL_PANEL_VisualisationWidth = 140;
 
-      CONTROL_PANEL_MinWidth_1 = 550;
-      CONTROL_PANEL_MinWidth_2 = 309;  // check later, maybe
+      //CONTROL_PANEL_MinWidth_1 = 550;
+      //CONTROL_PANEL_MinWidth_2 = 309;  // check later, maybe
 
       MAINFORM_MinHeight = 300;
       MAINFORM_MinWidth = 400;
 
-      MAIN_PANEL_MinHeight = 250;
-      MAIN_PANEL_MinWidth = 250;
+      // MAIN_PANEL_MinHeight = 250;
+      // MAIN_PANEL_MinWidth = 250;
       // these values are for childs in a "2-rows-layout", without ControlPanel
       // Formbuilder should adjust Constraints accoding to the Layout, especially the Height
-      CHILD_PANEL_MinWidth = 250;
-      CHILD_PANEL_MinHeight = 180;
+      // CHILD_PANEL_MinWidth = 250;
+      // CHILD_PANEL_MinHeight = 180;
 
 type
 
     TAudioFileStringIndex = (siArtist, siAlbum, siOrdner, siGenre, siJahr, siFileAge, siDateiname);
 
     // pa_default is used only for putting files from the playlist into the media library
-    TEProgressActions = (pa_Default, pa_SearchFiles, pa_SearchFilesForPlaylist, pa_RefreshFiles, pa_CleanUp, {pa_Searchlyrics,} pa_SearchTags, pa_UpdateMetaData, pa_DeleteFiles, pa_ScanNewFiles);
+    TEProgressActions = (pa_Default, pa_SearchFiles, pa_SearchFilesForPlaylist, pa_RefreshFiles,
+        pa_CleanUp, {pa_Searchlyrics,} pa_SearchTags, pa_UpdateMetaData, pa_DeleteFiles, pa_ScanNewFiles,
+        pa_ScanNewPlaylistFiles, pa_RefreshPlaylistFiles);
 
     TEDefaultCoverType = (dcFile, dcWebRadio, dcCDDA, dcNoCover_deprecated, dcError);
 
@@ -100,6 +102,7 @@ type
         (Key: 'BrowseList'; Top: 50; Left: 50; Width: 760; Height: 390; Docked: False; Visible: True),
         (Key: 'Extended'; Top: 580; Left: 910; Width: 330; Height: 330; Docked: False; Visible: True)
       );
+      cWebGenericWebRadioID = 'Webradio';
 
   type
 
@@ -226,6 +229,8 @@ type
         // etaws Kleinkram und allgemeine Optionen
         //DenyID3Edit: Boolean;
         LastKnownVersion: Integer;
+        LastUpdateCleaningCheck: Integer;
+        LastUpdateCleaningSuccess: Integer;
         AllowOnlyOneInstance: Boolean;
         RegisterHotKeys: Boolean;
         IgnoreVolumeUpDownKeys: Boolean;
@@ -284,7 +289,11 @@ type
         ArtistAlbenFontStyles: TFontStyles;
 
         AllowQuickAccessToMetadata: Boolean;
-        // UseCDDB: Boolean;
+        UseCDDB: Boolean;
+        PreferCDDB: Boolean;
+        AutoScanNewCDs: Boolean;
+        CDDBServer: String;
+        CDDBEMail: String;
 
         AnzeigeMode: Integer;
         UseSkin: Boolean;
@@ -333,8 +342,14 @@ const
     NEMP_CAPTION = 'Nemp - Noch ein MP3-Player';
     NEMP_NAME_TASK_LONG = '[ N e m p ]';
     NEMP_NAME_TASK = '[Nemp]';
-    NEMP_VERSION_SPLASH = 'version 5.0';// 'v3.3';
-    NEMP_BASS_DEFAULT_USERAGENT = 'Nemp/5.0';
+    NEMP_VERSION_SPLASH = 'version 5.1';
+    NEMP_BASS_DEFAULT_USERAGENT = 'Nemp/5.1';
+    CDDB_DEFAULT_SERVER = 'gnudb.gnudb.org';
+    CDDB_DEFAULT_EMAIL = 'nemp@gausi.de';
+    CDDB_APPNAME = 'nemp+5.1';
+
+    NEMP_ONLINE_HELP_DE = 'https://nemp-help.gausi.de/de/';
+    NEMP_ONLINE_HELP_EN = 'https://nemp-help.gausi.de/en/';
 
     NEMP_TIPSIZE = 128;
 
@@ -356,7 +371,12 @@ const
     // Playback Angehalten
     WM_SlideComplete = WM_USER + 505;
     WM_ResetPlayerVCL = WM_USER + 506;
-    WM_NewMetaData = WM_USER + 507;
+    WM_WebRadio = WM_USER + 507;
+      wWebRadioBuffering = 2;
+      wWebRadioNewMetaData = 3;
+      wWebRadioNewMetaDataOgg = 4;
+    // WM_NewMetaData = WM_USER + 507;
+
     WM_PlayerStop = WM_USER + 508;
     WM_PlayerPlay = WM_USER + 509;
     WM_PlayerAcceptInput = WM_User + 510;
@@ -374,6 +394,7 @@ const
     WM_PrepareNextFile = WM_USER + 518;
     WM_PlayerDelayedPlayNext = WM_USER + 519;
     WM_PlayerDelayCompleted = WM_USER + 520;
+    WM_PlayerPlayAgain = WM_USER + 521;
 
     //---------------------------------------
     // Messages der Medienbibliothek
@@ -396,6 +417,8 @@ const
     MB_BlockReadAccess =  3;
     // Update ist fertig. Jetzt müssen die Trees neu befüllt werden
     MB_RefillTrees = 4;
+    MB_ClearBrowseTrees = 11;
+    MB_ClearFilesTree = 12;
     MB_ClearEmptyNodes = 8;
     // Aufräumen ist auch erledigt. Controls wieder entsperren
     MB_Unblock =  5;
@@ -884,7 +907,6 @@ begin
 
   for idxForm := Low(TENempFormIDs) to High(TENempFormIDs) do
     FormPositions[idxForm] := TNempFormData.create(idxForm);
-
 end;
 
 destructor TNempOptions.Destroy;
@@ -1063,6 +1085,9 @@ begin
   fMainFormHandle := aHandle;
 
   LastKnownVersion := NempSettingsManager.ReadInteger('Allgemein','LastKnownVersion',0 );
+  LastUpdateCleaningCheck := NempSettingsManager.ReadInteger('Allgemein','LastUpdateCleaningCheck', 0);
+  LastUpdateCleaningSuccess := NempSettingsManager.ReadInteger('Allgemein','LastUpdateCleaningSuccess', 0);
+
   ShowSplashScreen := NempSettingsManager.ReadBool('Allgemein', 'ShowSplashScreen', True);
 
   AutoCloseProgressWindow := NempSettingsManager.ReadBool('Allgemein', 'AutoCloseProgressWindow', True);
@@ -1097,6 +1122,12 @@ begin
   PreferredLyricSearch := NempSettingsManager.ReadInteger('Allgemein', 'PreferredLyricSearchIdx', 0);
   if PreferredLyricSearch < 0 then
     PreferredLyricSearch := 0;
+
+  UseCDDB := NempSettingsManager.ReadBool('Allgemein', 'UseCDDB', False);
+  PreferCDDB := NempSettingsManager.ReadBool('Allgemein', 'PreferCDDB', False);
+  CDDBServer := NempSettingsmanager.ReadString('Allgemein', 'CDDBServer', '');
+  CDDBEMail := NempSettingsmanager.ReadString('Allgemein', 'CDDBEMail', '');
+  AutoScanNewCDs := NempSettingsManager.ReadBool('Allgemein', 'AutoScanNewCDs', True);
 
   ShowTrayIcon            := NempSettingsManager.ReadBool('Fenster', 'ShowTrayIcon', False);
   FullRowSelect := NempSettingsManager.ReadBool('Fenster', 'FullRowSelect', True);
@@ -1156,6 +1187,9 @@ begin
   NempSettingsManager.WriteBool('Allgemein', 'AutoCloseProgressWindow', AutoCloseProgressWindow);
   NempSettingsManager.WriteBool('Allgemein', 'ShowSplashScreen', ShowSplashScreen);
   NempSettingsManager.WriteInteger('Allgemein','LastKnownVersion', WIZ_CURRENT_SKINVERSION);
+  NempSettingsManager.WriteInteger('Allgemein','LastUpdateCleaningCheck', LastUpdateCleaningCheck);
+  NempSettingsManager.WriteInteger('Allgemein','LastUpdateCleaningSuccess', LastUpdateCleaningSuccess);
+
   NempSettingsManager.WriteBool('Allgemein', 'AllowOnlyOneInstance', AllowOnlyOneInstance);
   NempSettingsManager.WriteBool('Allgemein', 'RegisterHotKeys', RegisterHotKeys);
   NempSettingsManager.WriteBool('Allgemein', 'RegisterMediaHotkeys', RegisterMediaHotkeys);
@@ -1179,6 +1213,12 @@ begin
   NempSettingsManager.WriteString('Allgemein', 'Language', Language);
   NempSettingsManager.WriteInteger('Allgemein', 'maxDragFileCount', maxDragFileCount);
   NempSettingsManager.WriteInteger('Allgemein', 'PreferredLyricSearchIdx', PreferredLyricSearch);
+
+  NempSettingsManager.WriteBool('Allgemein', 'UseCDDB', UseCDDB);
+  NempSettingsManager.WriteBool('Allgemein', 'PreferCDDB', PreferCDDB);
+  NempSettingsmanager.WriteString('Allgemein', 'CDDBServer', CDDBServer);
+  NempSettingsmanager.WriteString('Allgemein', 'CDDBEMail', CDDBEMail);
+  NempSettingsManager.WriteBool('Allgemein', 'AutoScanNewCDs', AutoScanNewCDs);
 
   NempSettingsManager.WriteInteger('Fenster', 'Anzeigemode', AnzeigeMode);
   NempSettingsManager.WriteBool('Fenster', 'UseSkin', UseSkin);

@@ -43,8 +43,6 @@ uses
   math, contNrs, consts, OneInst, DateUtils,
   gnugettext, Nemp_RessourceStrings;
 
-
-
 //type TMyhelp = array[0..0] of TRGBQuad;
 //   TRGBArray = array[0..0] of TRGBTriple;
 //   pRGBArray = ^TRGBArray;
@@ -63,8 +61,7 @@ function GetStreamExtension(aStream: DWord): String;
 function ReplaceForbiddenFilenameChars(aString: UnicodeString): UnicodeString;
 
 procedure Explode(const Separator, S: String; aStrings: TStrings);  overload;
-//function Explode(const Separator, S: String): TStringList;  overload; Deprecated;
-procedure ExplodeWithQuoteMarks(const Separator, S: String; aStrings: TStrings); //: TStringList;  // Deprecated;
+procedure ExplodeWithQuoteMarks(const Separator, S: String; aStrings: TStrings);
 
 procedure Delay(dwMillSec: DWord);
 
@@ -90,12 +87,14 @@ function GainStringToSingle(aGainString: String): Single;
 function PeakStringToSingle(aPeakString: String): Single;
 
 function GainValueToString(aGainValue: Single): String;
+function ReplayGainValueToNumberString(aGainValue: Single): String;
 function PeakValueToString(aPeakValue: Single): String;
 
 function AnsiCompareText_Nemp(const S1, S2: string): Integer;
 function AnsiCompareText_NempIgnoreCase(const S1, S2: string): Integer;
 function AnsiStartsText_Nemp(const ASubText, AText: string): Boolean;
 
+function UniqueFilename(aExistingFilename: String): String;
 
 procedure Wuppdi(i: Integer = 0);
 
@@ -287,33 +286,6 @@ begin
 
 end;
 
-(*function Explode(const Separator, S: String): TStringList;
-var
-  SepLen: Integer;
-  F, P: PChar;
-  tmpstr: String;
-begin
-  result := TStringList.Create;
-  if (S = '') then Exit;
-  if Separator = '' then
-  begin
-    Result.Add(S);
-    Exit;
-  end;
-  SepLen := Length(Separator);
-  P := PChar(S);
-  while P^ <> #0 do
-  begin
-    F := P;
-    P := StrPos(P, PChar(Separator));
-    if (P = nil) then P := StrEnd(F);
-    SetString(tmpstr, F, P - F);
-    Result.Add(tmpstr);
-    if P^ <> #0 then Inc(P, SepLen);
-  end;
-end;*)
-
-//function ExplodeWithQuoteMarks(const Separator, S: String): TStringList;
 procedure ExplodeWithQuoteMarks(const Separator, S: String; aStrings: TStrings);
 var
   SepLen: Integer;
@@ -761,6 +733,22 @@ begin
     end;
 end;
 
+function ReplayGainValueToNumberString(aGainValue: Single): String;
+var formatSettings: TFormatSettings;
+begin
+    if isZero(aGainValue) then
+        result := '0'
+    else
+    if SameValue(aGainValue, 1) then
+        result := '1'
+    else
+    begin
+        formatSettings := TFormatSettings.Create(GetThreadLocale);
+        formatSettings.DecimalSeparator := '.';
+        result := Format('%.6f', [aGainValue], formatSettings);
+    end;
+end;
+
 function PeakValueToString(aPeakValue: Single): String;
 var formatSettings: TFormatSettings;
 begin
@@ -788,7 +776,7 @@ end;
 // also: SORT_DIGITSASNUMBERS for a better sorting of sampler series (like "Bravo Hits 1,2,3,..,10" instead of "1,10,2,3,..")
 function AnsiCompareText_Nemp(const S1, S2: string): Integer;
 begin
-  Result := CompareString(LOCALE_USER_DEFAULT, SORT_STRINGSORT or SORT_DIGITSASNUMBERS, PChar(S1),
+  Result := CompareString(LOCALE_USER_DEFAULT, SORT_STRINGSORT or LINGUISTIC_IGNORECASE or SORT_DIGITSASNUMBERS, PChar(S1),
     Length(S1), PChar(S2), Length(S2)) - CSTR_EQUAL;
 end;
 
@@ -810,6 +798,23 @@ begin
   else
     Result := CompareString(LOCALE_USER_DEFAULT, SORT_STRINGSORT or SORT_DIGITSASNUMBERS,
       PChar(AText), L, PChar(ASubText), L) = 2;
+end;
+
+function UniqueFilename(aExistingFilename: String): String;
+var
+  aPath, aExt, aFileName, newName: String;
+  i: Integer;
+begin
+  aExt := ExtractFileExt(aExistingFilename);
+  aPath := ExtractFilePath(aExistingFilename);
+  aFileName := ChangeFileExt(ExtractFilename(aExistingFilename), '');
+  i := 0;
+  repeat
+    inc(i);
+    newName := aPath + aFileName + '('+ IntToStr(i)+ ')' + aExt;
+  until not FileExists(newName);
+
+  result := newName;
 end;
 
 

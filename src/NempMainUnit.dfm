@@ -3,8 +3,8 @@ object Nemp_MainForm: TNemp_MainForm
   Top = 0
   HelpContext = 10000
   Caption = 'Nemp - Noch ein MP3-Player'
-  ClientHeight = 769
-  ClientWidth = 1090
+  ClientHeight = 698
+  ClientWidth = 1096
   Color = clBtnFace
   Constraints.MinHeight = 300
   Constraints.MinWidth = 400
@@ -34,8 +34,8 @@ object Nemp_MainForm: TNemp_MainForm
     Tag = 2
     Left = 0
     Top = 0
-    Width = 1090
-    Height = 769
+    Width = 1096
+    Height = 698
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 0
@@ -48,8 +48,8 @@ object Nemp_MainForm: TNemp_MainForm
     SplitterMinSize = 110
     object _ControlPanel: TNempPanel
       Left = 0
-      Top = 669
-      Width = 1090
+      Top = 598
+      Width = 1096
       Height = 100
       Align = alBottom
       BevelOuter = bvNone
@@ -65,7 +65,7 @@ object Nemp_MainForm: TNemp_MainForm
       object ControlContainer2: TNempPanel
         Left = 481
         Top = 0
-        Width = 609
+        Width = 615
         Height = 100
         Align = alClient
         BevelOuter = bvNone
@@ -76,7 +76,7 @@ object Nemp_MainForm: TNemp_MainForm
           Tag = 4
           Left = 0
           Top = 0
-          Width = 609
+          Width = 615
           Height = 100
           Align = alClient
           BevelInner = bvRaised
@@ -92,12 +92,12 @@ object Nemp_MainForm: TNemp_MainForm
           OnPaint = ControlPanelPaint
           OwnerDraw = False
           DesignSize = (
-            609
+            615
             100)
           object SlideBarShape: TProgressShape
             Left = 100
             Top = 78
-            Width = 451
+            Width = 457
             Height = 6
             Anchors = [akLeft, akTop, akRight]
             Brush.Color = clGradientActiveCaption
@@ -110,6 +110,7 @@ object Nemp_MainForm: TNemp_MainForm
             ProgressPen.Color = 12678971
             ProgressBrush.Color = clMaroon
             Progress = 0.500000000000000000
+            ExplicitWidth = 451
           end
           object RatingImage: TImage
             Left = 11
@@ -138,7 +139,7 @@ object Nemp_MainForm: TNemp_MainForm
             OnStartDrag = ab1StartDrag
           end
           object PlayerTimeLbl: TLabel
-            Left = 566
+            Left = 572
             Top = 74
             Width = 34
             Height = 13
@@ -168,7 +169,7 @@ object Nemp_MainForm: TNemp_MainForm
             OnStartDrag = ab1StartDrag
           end
           object PaintFrame: TImage
-            Left = 525
+            Left = 531
             Top = 34
             Width = 75
             Height = 25
@@ -296,7 +297,7 @@ object Nemp_MainForm: TNemp_MainForm
             Color2 = clBlack
           end
           object BtnClose: TSkinButton
-            Left = 591
+            Left = 597
             Top = 4
             Width = 12
             Height = 12
@@ -319,7 +320,7 @@ object Nemp_MainForm: TNemp_MainForm
             Color2 = clBlack
           end
           object BtnMinimize: TSkinButton
-            Left = 576
+            Left = 582
             Top = 4
             Width = 12
             Height = 12
@@ -1036,6 +1037,7 @@ object Nemp_MainForm: TNemp_MainForm
           Font.Style = []
           Header.AutoSizeIndex = 1
           Header.Background = clWindow
+          Header.Height = 17
           Header.MainColumn = 1
           Header.Options = [hoAutoResize, hoDrag, hoVisible]
           Header.PopupMenu = PlaylistVST_HeaderPopup
@@ -1063,11 +1065,14 @@ object Nemp_MainForm: TNemp_MainForm
           OnDragAllowed = PlaylistVSTDragAllowed
           OnDragOver = PlaylistVSTDragOver
           OnDragDrop = PlaylistVSTDragDrop
+          OnDrawHint = TitlesVSTDrawHint
           OnEndDrag = PlaylistVSTEndDrag
           OnGetText = PlaylistVSTGetText
           OnPaintText = VSTPaintText
+          OnGetHintKind = TitlesVSTGetHintKind
+          OnGetHintSize = TitlesVSTGetHintSize
           OnGetImageIndex = PlaylistVSTGetImageIndex
-          OnGetHint = PlaylistVSTGetHint
+          OnGetHint = TitlesVSTGetHint
           OnGetUserClipboardFormats = TreesGetUserClipboardFormats
           OnHeaderDrawQueryElements = VSTHeaderDrawQueryElements
           OnKeyDown = PlaylistVSTKeyDown
@@ -1787,14 +1792,17 @@ object Nemp_MainForm: TNemp_MainForm
           OnDragAllowed = VSTDragAllowed
           OnDragOver = LibraryCollectionTreeDragOver
           OnDragDrop = LibraryCollectionTreeDragDrop
+          OnDrawHint = TitlesVSTDrawHint
           OnEditCancelled = VSTEditCancelled
           OnEdited = VSTEdited
           OnEditing = VSTEditing
           OnEndDrag = LibraryVSTEndDrag
           OnGetText = VSTGetText
           OnPaintText = VSTPaintText
+          OnGetHintKind = TitlesVSTGetHintKind
+          OnGetHintSize = TitlesVSTGetHintSize
           OnGetImageIndex = VSTGetImageIndex
-          OnGetHint = PlaylistVSTGetHint
+          OnGetHint = TitlesVSTGetHint
           OnGetUserClipboardFormats = TreesGetUserClipboardFormats
           OnHeaderClick = VSTHeaderClick
           OnHeaderDblClick = VSTHeaderDblClick
@@ -2205,7 +2213,7 @@ object Nemp_MainForm: TNemp_MainForm
           Font.Style = []
           Header.AutoSizeIndex = 0
           Header.Background = clWindow
-          Header.Height = 18
+          Header.Height = 16
           Header.Options = [hoAutoResize, hoDrag, hoVisible]
           Images = DummyImageList
           IncrementalSearch = isAll
@@ -2429,7 +2437,6 @@ object Nemp_MainForm: TNemp_MainForm
         PopupMenu = Medialist_Collection_PopupMenu
         TabOrder = 1
         OnDblClick = PanelCoverBrowseDblClick
-        OnEndDrag = PanelCoverBrowseEndDrag
         OnMouseDown = PanelCoverBrowseMouseDown
         OnMouseMove = IMGMedienBibCoverMouseMove
         OnMouseUp = IMGMedienBibCoverMouseUp
@@ -2845,7 +2852,7 @@ object Nemp_MainForm: TNemp_MainForm
         OnClick = MM_ML_SaveClick
       end
       object MM_ML_ExportAsCSV: TMenuItem
-        Caption = '&Export as csv'
+        Caption = '&Export'
         ShortCut = 16453
         OnClick = PM_ML_MedialibraryExportClick
       end
@@ -2862,6 +2869,10 @@ object Nemp_MainForm: TNemp_MainForm
         ImageIndex = 39
         ShortCut = 16500
         OnClick = MM_ML_RefreshAllClick
+      end
+      object MM_ML_RefreshPlaylists: TMenuItem
+        Caption = 'Refresh (Playlists only)'
+        OnClick = MM_ML_RefreshPlaylistsClick
       end
       object MM_ML_DeleteMissingFiles: TMenuItem
         Caption = 'Cleanup (remove &missing files)'
@@ -3214,6 +3225,7 @@ object Nemp_MainForm: TNemp_MainForm
     end
     object MM_Help: TMenuItem
       Caption = '&Help'
+      OnClick = MM_HelpClick
       object MM_H_About: TMenuItem
         Caption = '&About Nemp'
         ImageIndex = 17
@@ -3224,10 +3236,18 @@ object Nemp_MainForm: TNemp_MainForm
         ImageIndex = 4
         OnClick = ToolButton7Click
       end
+      object MM_H_HelpOnline: TMenuItem
+        Caption = 'Online help'
+        OnClick = MM_H_HelpOnlineClick
+      end
       object MM_H_CheckForUpdates: TMenuItem
         Caption = 'Check for updates'
         ImageIndex = 22
         OnClick = MM_H_CheckForUpdatesClick
+      end
+      object MM_H_CleanupUpdate: TMenuItem
+        Caption = 'Clean up update'
+        OnClick = MM_H_CleanupUpdateClick
       end
     end
     object MM_H_ErrorLog: TMenuItem
@@ -5509,13 +5529,17 @@ object Nemp_MainForm: TNemp_MainForm
       Caption = 'Enqueue (after the current title)'
       OnClick = PM_ML_FilesPlayEnqueueClick
     end
+    object PM_ML_ApplyDefaultActionToWholeList: TMenuItem
+      Caption = 'Add all displayed titles'
+      OnClick = PM_ML_ApplyDefaultActionToWholeListClick
+    end
+    object N14: TMenuItem
+      Caption = '-'
+    end
     object PM_ML_PlayNow: TMenuItem
       Tag = 3
       Caption = 'Just play focussed file (don'#39't change the playlist)'
       OnClick = PM_ML_FilesPlayNowClick
-    end
-    object N14: TMenuItem
-      Caption = '-'
     end
     object PM_ML_PlayHeadset: TMenuItem
       Caption = 'Play in headset'
@@ -6415,20 +6439,29 @@ object Nemp_MainForm: TNemp_MainForm
     object Help1: TMenuItem
       Caption = 'Help'
       ImageIndex = 4
+      OnClick = MM_HelpClick
       object PM_P_About: TMenuItem
         Caption = 'About Nemp'
         ImageIndex = 17
         OnClick = MM_H_AboutClick
+      end
+      object PM_P_Help: TMenuItem
+        Caption = 'Help'
+        ImageIndex = 4
+        OnClick = ToolButton7Click
+      end
+      object PM_P_OnlineHelp: TMenuItem
+        Caption = 'Online help'
+        OnClick = MM_H_HelpOnlineClick
       end
       object PM_P_CheckForUpdates: TMenuItem
         Caption = 'Check for updates'
         ImageIndex = 22
         OnClick = MM_H_CheckForUpdatesClick
       end
-      object PM_P_Help: TMenuItem
-        Caption = 'Help'
-        ImageIndex = 4
-        OnClick = ToolButton7Click
+      object PM_P_CleanupUpdate: TMenuItem
+        Caption = 'Clean up update'
+        OnClick = MM_H_CleanupUpdateClick
       end
     end
   end
@@ -7024,6 +7057,10 @@ object Nemp_MainForm: TNemp_MainForm
       Caption = 'Properties'
       OnClick = pm_TagDetailsClick
     end
+    object pm_TagShowInExplorer: TMenuItem
+      Caption = 'Show in Windows Explorer'
+      OnClick = pm_TagShowInExplorerClick
+    end
     object N37: TMenuItem
       Caption = '-'
     end
@@ -7138,6 +7175,10 @@ object Nemp_MainForm: TNemp_MainForm
       Tag = 2
       Caption = 'Enqueue (after the current title)'
       OnClick = PM_ML_CollectionPlayEnqueueClick
+    end
+    object PM_ML_CollectionShowPlaylistInExplorer: TMenuItem
+      Caption = 'Show playlist file in Windows Explorer'
+      OnClick = PM_ML_CollectionShowPlaylistInExplorerClick
     end
     object N27: TMenuItem
       Caption = '-'

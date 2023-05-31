@@ -54,7 +54,7 @@ uses Windows, Contnrs, Sysutils,  Classes, Inifiles, RTLConsts,
      Nemp_RessourceStrings, DriveRepairTools, ShoutcastUtils, BibSearchClass,
      NempCoverFlowClass, TagClouds, ScrobblerUtils, CustomizedScrobbler,
      LibraryOrganizer.Base, LibraryOrganizer.Files, LibraryOrganizer.Playlists, LibraryOrganizer.Webradio,
-     PlaylistManagement,
+     PlaylistManagement, AudioExportUtils,
      DeleteHelper, TagHelper, Generics.Collections, unFastFileStream, System.Types, System.UITypes,
      {Winapi.Wincodec, Winapi.ActiveX,} System.Generics.Defaults;
 
@@ -216,6 +216,8 @@ type
 
         fJobList: TJobList;
 
+        fAudioExport: TAudioExport;
+
         function IsAutoSortWanted: Boolean;
         // Getter and Setter for some properties.
         // Most of them Thread-Safe
@@ -278,8 +280,14 @@ type
         procedure fGetDeadFilesSummary(DeleteDataList: TObjectList; var aSummary: TDeadFilesInfo);
 
         // Refreshing Library
-        procedure fRefreshFiles(aRefreshList: TAudioFileList);      // 1a. Refresh files OR
+        procedure InitiateRefreshProcess;
+        procedure fRefreshFiles(aRefreshList: TAudioFileList; aPlaylistRefreshList: TLibraryPlaylistList);      // 1a. Refresh files OR
+        procedure fRefreshPlaylistFiles(aPlaylistRefreshList: TLibraryPlaylistList);
+        procedure FinishRefreshProcess;
+
         procedure fScanNewFiles;
+        procedure fScanPlaylistFile(aPlaylist: TLibraryPlaylist; ScanMode: CoverScanThreadMode);
+        procedure fScanNewPlaylistFiles;
         // procedure fGetLyrics;         // 1b. get Lyrics
         procedure fPrepareGetTags;    // 1c. get tags, but at first make a copy of the Ignore/rename-Rules in VCL-Thread
         procedure fGetTags;           //     get Tags (from LastFM)
@@ -417,6 +425,7 @@ type
         AnzeigeListIsCurrentlySorted: Boolean;
         //AutoScanPlaylistFilesOnView: Boolean;
         ShowHintsInMedialist: Boolean;
+        ShowAdvancedHints: Boolean;
         AutoScanDirs: Boolean;
         AutoScanDirList: TStringList;  // complete list of all Directories to scan
         AutoScanToDoList: TStringList; // the "working list"
@@ -424,7 +433,8 @@ type
         CurrentSearchDir: String;
 
         // for the scan process for new files: New method in 4.12
-        UseNewFileScanMethod: Boolean;
+        // version 5.1, 2023: The new method has proven its worth, remove fallback to old code
+        // UseNewFileScanMethod: Boolean;
 
         AutoDeleteFiles: Boolean;       
         AutoDeleteFilesShowInfo: Boolean;
@@ -439,22 +449,14 @@ type
         AutoActivateWebServer: Boolean;
 
         CoverSearchLastFM: Boolean;
-        // HideNACover: Boolean;
         MissingCoverMode: teMissingCoverPreSorting; //Integer;
 
-        // Einstellungen für Standard-Cover
-        // Eines für alle. Ist eins nicht da: Fallback auf Default
-        //UseNempDefaultCover: Boolean;
-        //PersonalizeMainCover: Boolean;
-
-        // zur Laufzeit - weitere Sortiereigenschaften
-        //Sortparam: Integer; // Eine der CON_ // CON_EX_- Konstanten
-        //SortAscending: Boolean;
-
         SortParams: Array[0..SORT_MAX] of TCompareRecord;
-          { TODO :
-            SortParams im Create initialisieren
-            SortParams in Ini Speichern/Laden }
+
+        ExportTemplate: String;
+        ExportMode: integer;
+        ExportDirectory: String;
+        ExportFilename: String;
 
         // this is used to synchronize access to single mediafiles
         // Some threads are running and modifying the files: GetLyrics and the Player.PostProcessor
@@ -470,7 +472,7 @@ type
         // used for editing-stuff in the detail-panel besides the tree
         // Note: This File is not necessary in the library. It can be just in
         // the playlist! Or one entry in a Library-Playlist.
-        CurrentAudioFile: TAudioFile;
+        //CurrentAudioFile: TAudioFile; // Changed to Nemp_MainForm.CurrentlySelectedFile
 
 
         NewCoverFlow: TNempCoverFlow;
@@ -526,15 +528,16 @@ type
         property IgnoreLyrics     : Boolean read fIgnoreLyrics     write fSetIgnoreLyrics  ;
         property IgnoreLyricsFlag : Integer read fIgnoreLyricsFlag                         ;
 
-        property PlaylistDriveManager: TDriveManager read fPlaylistDriveManager;
+        //property PlaylistDriveManager: TDriveManager read fPlaylistDriveManager; // not needed
 
         property DefaultFileCategory: TLibraryFileCategory read GetDefaultFileCategory write SetDefaultFileCategory;
         property NewFilesCategory: TLibraryFileCategory read GetNewFilesCategory write SetNewFilesCategory;
 
-
         property DefaultPlaylistCategory: TLibraryPlaylistCategory read GetDefaultPlaylistCategory;
         property FavoritePlaylistCategory: TLibraryPlaylistCategory read GetFavoritePlaylistCategory;
         property AutoScanPlaylistFilesOnView: Boolean read fAutoScanPlaylistFilesOnView write SetAutoScanPlaylistFilesOnView;
+
+        property AudioExport: TAudioExport read fAudioExport;
 
         // Basic Operations. Create, Destroy, Clear, Copy
         constructor Create(aWnd: DWord; CFHandle: DWord);
@@ -558,15 +561,14 @@ type
         // - Delete not existing files
         // - Refresh AudioFile-Information
         // These methods will start a new thread and call several private methods
-        procedure NewFilesUpdateBib(NewBib: Boolean = False);
+        procedure NewFilesUpdateBib(NewBib: Boolean = False); // used for files loaded from the gmp file
+        procedure ScanNewFilesAndUpdateBib; // Scan Files in UpdateList for the first time and merge them into the MediaLibrary
         procedure DeleteFilesUpdateBib;
         procedure DeleteFilesUpdateBibAutomatic;
 
-        // for Nemp 4.12: Scan Files in UpdateList for the first time and merge them into the MediaLibrary
-        procedure ScanNewFilesAndUpdateBib;
-
         procedure CleanUpDeadFilesFromVCLLists;
         procedure RefreshFiles_All;
+        procedure RefreshPlaylists;
         procedure RefreshFiles_Selected;
         procedure GetLyrics;
         procedure GetTags;
@@ -596,9 +598,10 @@ type
         function AddNewTag(aAudioFile: TAudioFile; newTag: String; IgnoreWarnings: Boolean; Threaded: Boolean = False): TTagError;
 
         // Check, whether AudioFiles already exists in the library.
-        function AudioFileExists(aFilename: UnicodeString): Boolean;
-        function GetAudioFileWithFilename(aFilename: UnicodeString): TAudioFile;
-        function PlaylistFileExists(aFilename: UnicodeString): Boolean;
+        function AudioFileExists(const aFilename: UnicodeString): Boolean;
+        function GetAudioFileWithFilename(const aFilename: UnicodeString): TAudioFile; overload;
+        function GetAudioFileWithFilename(const aFilename: UnicodeString; SourceList: TAudioFileList): TAudioFile; overload;
+        function PlaylistFileExists(const aFilename: UnicodeString): Boolean;
 
         // 2018: new helper method to set the BaseMarkerList properly
         procedure SetBaseMarkerList(aList: TAudioFileList);
@@ -633,6 +636,7 @@ type
         procedure DeleteEmptyFileCollections;
         procedure DeleteEmptyWebRadioCollections;
         procedure RefreshCollections(FullRefill: Boolean = True);
+        procedure RefreshCollectionsPlaylistsOnly(FullRefill: Boolean = True);
         procedure RefreshWebRadioCategory;
 
         procedure ChangeFileCollectionSorting(RCIndex, Layer: Integer; newSorting: teCollectionSorting;
@@ -713,6 +717,10 @@ type
 
         // Saving/Loading
         // a. Export as CSV, to get the library to Excel or whatever.
+        procedure PrepareExport;
+        function DoExport(Mode: Integer; TargetFilename: String): Boolean;
+        function DoPlaylistExport(Playlist: TAudioFileList; TargetFilename: String): Boolean;
+        procedure FinishExport(Finished: Boolean);
         function SaveAsCSV(aFilename: UnicodeString): Boolean;
         // b. Loading/Saving the *.gmp-File
         // will call several private methods
@@ -732,6 +740,8 @@ type
         function GetLyricsUsage: TLibraryLyricsUsage;
         procedure RemoveAllLyrics;
 
+
+
   end;
 
   Procedure fLoadLibrary(MB: TMedienbibliothek);
@@ -744,6 +754,7 @@ type
 
   procedure fRefreshFilesThread_All(MB: TMedienbibliothek);
   procedure fRefreshFilesThread_Selected(MB: TMedienbibliothek);
+  procedure fRefreshPlaylistsThread(MB: TMedienbibliothek);
 
   // procedure fGetLyricsThread(MB: TMedienBibliothek);
   procedure fGetTagsThread(MB: TMedienBibliothek);
@@ -760,7 +771,7 @@ type
 
 implementation
 
-uses System.Win.TaskbarCore, AudioDisplayUtils, Math;
+uses System.Win.TaskbarCore, AudioDisplayUtils, Math, fExport, VCL.Forms;
 
 function GetProperMenuString(aIdx: Integer): UnicodeString;
 begin
@@ -868,7 +879,9 @@ begin
 
   fJobList := TJobList.Create;
   fJobList.OwnsObjects := True;
+  fAudioExport := Nil;
   fChangeCategory := Nil;
+  // CurrentAudioFile := Nil;
 end;
 
 destructor TMedienBibliothek.Destroy;
@@ -923,6 +936,9 @@ begin
   ST_Ordnerlist.Free;
   BibSearcher.Free;
 
+  if assigned(fAudioExport) then
+    fAudioExport.Free;
+
   inherited Destroy;
 end;
 
@@ -936,6 +952,10 @@ end;
 procedure TMedienBibliothek.Clear;
 var i: Integer;
 begin
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_ClearFilesTree, 0);
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_ClearBrowseTrees, 0);
+
+  // CurrentAudioFile := Nil;
   fJobList.Clear;
   for i := 0 to Mp3ListePfadSort.Count - 1 do
       Mp3ListePfadSort[i].Free;
@@ -948,6 +968,10 @@ begin
   PlaylistCategories.Clear;
   CoverSearchCategory.Clear;
   WebRadioCategory.Clear;
+  CurrentCategory := Nil;
+  fNewFilesCategory := Nil;
+  fDefaultFileCategory := Nil;
+  fChangeCategory := Nil;
   InitFileCategories; // create Default-Lists
 
   UpdateList.Clear;
@@ -984,6 +1008,7 @@ end;
 
 procedure TMedienBibliothek.ClearFileCategories;
 begin
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_ClearBrowseTrees, 0);
   FileCategories.Clear;
   CurrentCategory := Nil;
   fNewFilesCategory := Nil;
@@ -1211,13 +1236,14 @@ begin
         //BetaDontUseThreadedUpdate := Ini.ReadBool('Beta', 'DontUseThreadedUpdate', False);
 
         // temporary, maybe add an option later (or remove it completely, so use it always)
-        UseNewFileScanMethod := NempSettingsManager.ReadBool('MedienBib', 'UseNewFileScanMethod', True);
+        // UseNewFileScanMethod := NempSettingsManager.ReadBool('MedienBib', 'UseNewFileScanMethod', True);
 
         AlwaysSortAnzeigeList := NempSettingsManager.ReadBool('MedienBib', 'AlwaysSortAnzeigeList', False);
         limitMarkerToCurrentFiles := NempSettingsManager.ReadBool('MedienBib', 'limitMarkerToCurrentFiles', True);
         SkipSortOnLargeLists  := NempSettingsManager.ReadBool('MedienBib', 'SkipSortOnLargeLists', True);
         AutoScanPlaylistFilesOnView := NempSettingsManager.ReadBool('MedienBib', 'AutoScanPlaylistFilesOnView', True);
         ShowHintsInMedialist := NempSettingsManager.ReadBool('Medienbib', 'ShowHintsInMedialist', True);
+        ShowAdvancedHints := NempSettingsManager.ReadBool('Medienbib', 'ShowAdvancedHints', True);
 
         for i := SORT_MAX downto 0 do
         begin
@@ -1318,6 +1344,11 @@ begin
 
         AutoActivateWebServer := NempSettingsManager.ReadBool('MedienBib', 'AutoActivateWebServer', False);
 
+        ExportTemplate := NempSettingsManager.ReadString('MedienBib', 'ExportTemplate', 'csv');
+        ExportMode  := NempSettingsManager.ReadInteger('MedienBib', 'ExportMode', 0);
+        ExportDirectory := NempSettingsManager.ReadString('MedienBib', 'ExportDirectory', '');
+        ExportFilename := NempSettingsManager.ReadString('MedienBib', 'ExportFilename', '');
+
         NewCoverFlow.LoadSettings;
         BibSearcher.LoadFromIni(NempSettingsManager);
         fCurrentCategoryIdx := NempSettingsManager.ReadInteger('LibraryOrganizerSelection', 'CollectionIndex', 0);
@@ -1334,6 +1365,7 @@ begin
 
         NempSettingsManager.WriteBool('MedienBib', 'AutoScanPlaylistFilesOnView', AutoScanPlaylistFilesOnView);
         NempSettingsManager.WriteBool('Medienbib', 'ShowHintsInMedialist', ShowHintsInMedialist);
+        NempSettingsManager.WriteBool('Medienbib', 'ShowAdvancedHints', ShowAdvancedHints);
 
         for i := SORT_MAX downto 0 do
         begin
@@ -1377,6 +1409,11 @@ begin
         NempSettingsManager.WriteBool('MedienBib', 'AutoAddNewDirs', AutoAddNewDirs);
         NempSettingsManager.WriteBool('MedienBib', 'AutoActivateWebServer', AutoActivateWebServer);
 
+        NempSettingsManager.WriteString('MedienBib', 'ExportTemplate', ExportTemplate);
+        NempSettingsManager.WriteInteger('MedienBib', 'ExportMode', ExportMode);
+        NempSettingsManager.WriteString('MedienBib', 'ExportDirectory', ExportDirectory);
+        NempSettingsManager.WriteString('MedienBib', 'ExportFilename', ExportFilename);
+
         NempSettingsManager.WriteBool('MedienBib', 'ShowAutoResolveInconsistenciesHints', ShowAutoResolveInconsistenciesHints);
         NempSettingsManager.WriteBool('MedienBib', 'AskForAutoResolveInconsistencies', AskForAutoResolveInconsistencies);
         NempSettingsManager.WriteBool('MedienBib', 'AutoResolveInconsistencies'      , AutoResolveInconsistencies);
@@ -1401,7 +1438,7 @@ begin
             FileCategories[catIdx].LastSelectedCollectionData[i].SaveSettings(i, catIdx);
         end;
 
-        NempSettingsManager.WriteBool('MedienBib', 'UseNewFileScanMethod', UseNewFileScanMethod);
+        // NempSettingsManager.WriteBool('MedienBib', 'UseNewFileScanMethod', UseNewFileScanMethod);
 
         NewCoverFlow.SaveSettings;
         NempOrganizerSettings.SaveSettings;
@@ -1446,6 +1483,7 @@ begin
         // new part here: Scan the files first
         MB.UpdateFortsetzen := True;
         MB.fScanNewFiles;
+        MB.fScanNewPlaylistFiles;
         // Merge Files into the Library
         // Status is set properly in PrepareNewFilesUpdate
         MB.PrepareNewFilesUpdate;
@@ -1484,7 +1522,6 @@ begin
 
   SendMessage(MainWindowHandle, WM_MedienBib, MB_BlockUpdateStart, 0); // Or better MB_BlockWriteAccess? - No, it should be ok so.
   SendMessage(MainWindowHandle, WM_MedienBib, MB_SetWin7TaskbarProgress, Integer(TTaskBarProgressState.Normal));
-
   SendMessage(MainWindowHandle, WM_MedienBib, MB_StartLongerProcess, Integer(pa_ScanNewFiles));
 
   // release the Factory (but this should not happen here, as the Factory should have been NILed by the previous thread)
@@ -1569,6 +1606,132 @@ begin
   end;
 end;
 
+procedure TMedienBibliothek.fScanPlaylistFile(aPlaylist: TLibraryPlaylist; ScanMode: CoverScanThreadMode);
+var
+  BibFile: TAudioFile;
+  iFile: Integer;
+  tmpPlaylistFiles: TAudioFileList;
+  UserDefCoverFile: String;
+begin
+    // try to use a user-defined Coverfile for this Playlist-File
+    UserDefCoverFile := ChangeFileExt(aPlaylist.Path, '.jpg');
+    if not FileExists(UserDefCoverFile) then begin
+      UserDefCoverFile := ChangeFileExt(aPlaylist.Path, '.png');
+      if not FileExists(UserDefCoverFile) then
+        UserDefCoverFile := '';
+    end;
+    if UserDefCoverFile <> '' then
+      aPlaylist.CoverID := CoverArtSearcher.InitCoverFromFilename(UserDefCoverFile, ScanMode)
+    else begin
+      tmpPlaylistFiles := TAudioFileList.Create;
+      try
+        // Load Playlist
+        LoadPlaylistFromFile(aPlaylist.Path,
+              tmpPlaylistFiles,
+              false,
+              fPlaylistDriveManager);
+        // Get all CoverIDs for the Files in the Playlist
+        for iFile := 0 to tmpPlaylistFiles.Count - 1 do begin
+          BibFile := GetAudioFileWithFilename(tmpPlaylistFiles[iFile].Pfad);
+          if assigned(BibFile) then
+            tmpPlaylistFiles[iFile].CoverID := BibFile.CoverID
+          else begin
+            // try the List of freshly scanned Files
+            BibFile := GetAudioFileWithFilename(tmpPlaylistFiles[iFile].Pfad, UpdateList);
+            if assigned(BibFile) then
+              tmpPlaylistFiles[iFile].CoverID := BibFile.CoverID;
+          end;
+        end;
+
+        // Get the most common CoverID in these files
+        aPlaylist.CoverID := TAudioFileCollection.CommonCoverID(tmpPlaylistFiles);
+        if aPlaylist.CoverID = ''  then
+          aPlaylist.CoverID := '_';
+
+      finally
+        tmpPlaylistFiles.Free;
+      end;
+    end;
+end;
+
+procedure TMedienBibliothek.fScanNewPlaylistFiles;
+var i, freq, ges: Integer;
+    ct, nt: Cardinal;
+    ScanList: TLibraryPlaylistList;
+begin
+
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_BlockUpdateStart, 0);
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_SetWin7TaskbarProgress, Integer(TTaskBarProgressState.Normal));
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_StartLongerProcess, Integer(pa_ScanNewPlaylistFiles));
+
+  // release the Factory (but this should not happen here, as the Factory should have been NILed by the previous thread)
+  if WICImagingFactory_ScanThread <> Nil then begin
+      if WICImagingFactory_ScanThread._Release = 0 then
+          Pointer(WICImagingFactory_ScanThread) := Nil;
+  end;
+
+  ges := PlaylistUpdateList.Count;
+
+  freq := Round(PlaylistUpdateList.Count / 100) + 1;
+  ct := GetTickCount;
+
+  PlaylistUpdateList.Sort(SortPlaylists_Path);
+  ScanList := TLibraryPlaylistList.Create(False);
+  try
+      // Transfer the items from the PlaylistUpdateList into a temporary new List
+      ScanList.Capacity := PlaylistUpdateList.Count;
+      for i := 0 to PlaylistUpdateList.Count - 1 do
+          ScanList.Add(PlaylistUpdateList[i]);
+      // Clear the original PlaylistUpdateList
+      PlaylistUpdateList.Clear;
+
+      ChangeAfterUpdate := True;
+      for i := 0 to ScanList.Count - 1 do
+      begin
+          if Not UpdateFortsetzen then
+          begin
+              // Free the remaining AudioFiles in the ScanList, and
+              // don't add them to the UpdateList, which is processed after this method
+              ScanList[i].Free;
+          end else
+          begin
+                    // Scan the Playlist, determine its CoverID
+                    if FileExists(ScanList[i].Path) then
+                      fScanPlaylistFile(ScanList[i], tm_Thread);
+
+                    // Add the File to the UpdateList, which is merged into the MediaLibrary later.
+                    PlaylistUpdateList.Add(ScanList[i]);
+
+                    // Progress message to MainThread
+                    nt := GetTickCount;
+                    if (i mod freq = 0) or (nt > ct + 500) or (nt < ct) then
+                    begin
+                        ct := nt;
+                        SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressCurrentFileOrDirUpdate,
+                                        Integer(PWideChar(Format(_(MediaLibrary_ScanningPlaylistsInDir),
+                                                              [ ExtractFilePath(ScanList[i].Path) ]))));
+                        SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressScanningNewFiles,
+                                        Integer(PWideChar(Format(_(MediaLibrary_ScanningPlaylistsCount),
+                                                              [ i, ges ]))));
+                        SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressRefreshJustProgressbar, Round(i/ges * 100));
+                        SendMessage(MainWindowHandle, WM_MedienBib, MB_CurrentProcessSuccessCount, i+1);
+                    end;
+          end;
+      end;
+
+      // release the Factory now, scanning is complete and the the thread will terminate soon
+      if WICImagingFactory_ScanThread <> Nil then begin
+          if WICImagingFactory_ScanThread._Release = 0 then
+              Pointer(WICImagingFactory_ScanThread) := Nil;
+      end;
+
+      // progress complete
+      SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressRefreshJustProgressbar, 100);
+  finally
+      ScanList.Free;
+  end;
+end;
+
 {
     --------------------------------------------------------
     NewFilesUpdateBib
@@ -1578,12 +1741,12 @@ end;
        - a search for mp3-Files done with SearchUtils
 
     Note: This Method is called after loading a Library-File,
-          and after a FileSearch
           It should NOT check for status = 0, but it MUST set it
           to 2 immediatly
           Check =/<> 0 MUST be done outside!
     --------------------------------------------------------
 }
+
 procedure TMedienBibliothek.NewFilesUpdateBib(NewBib: Boolean = False);
 var Dummy: Cardinal;
 begin
@@ -1601,6 +1764,7 @@ begin
   //else
       fHND_UpdateThread := (BeginThread(Nil, 0, @fNewFilesUpdate, Self, 0, Dummy));
 end;
+
 {
     --------------------------------------------------------
     fNewFilesUpdate
@@ -1609,6 +1773,7 @@ end;
       block Read/Write-Access to the library when its needed.
     --------------------------------------------------------
 }
+
 procedure fNewFilesUpdate(MB: TMedienbibliothek);
 begin
   if (MB.UpdateList.Count > 0) or (MB.PlaylistUpdateList.Count > 0) or (MB.CategoryChangeList.Count > 0) then
@@ -1636,12 +1801,12 @@ begin
   SendMessage(MB.MainWindowHandle, WM_MedienBib, MB_SetStatus, BIB_Status_Free);
   // check for the next job
   SendMessage(MB.MainWindowHandle, WM_MedienBib, MB_CheckForStartJobs, 0);
-
   try
       CloseHandle(MB.fHND_UpdateThread);
   except
   end;
 end;
+
 {
     --------------------------------------------------------
     PrepareNewFilesUpdate
@@ -2306,6 +2471,23 @@ begin
       fHND_RefreshFilesThread := (BeginThread(Nil, 0, @fRefreshFilesThread_All, Self, 0, Dummy));
   end;
 end;
+
+procedure TMedienBibliothek.RefreshPlaylists;
+var Dummy: Cardinal;
+begin
+  if StatusBibUpdate = 0 then
+  begin
+      UpdateFortsetzen := True;
+      StatusBibUpdate := BIB_Status_ReadAccessBlocked;
+      // reset Coversearch
+      CoverArtSearcher.StartNewSearch;
+      // start refreshing files
+      fHND_RefreshFilesThread := (BeginThread(Nil, 0, @fRefreshPlaylistsThread, Self, 0, Dummy));
+  end;
+end;
+
+
+
 procedure TMedienBibliothek.RefreshFiles_Selected;
 var Dummy: Cardinal;
 begin
@@ -2328,7 +2510,7 @@ end;
 }
 procedure fRefreshFilesThread_All(MB: TMedienbibliothek);
 begin
-    MB.fRefreshFiles(MB.Mp3ListePfadSort);
+    MB.fRefreshFiles(MB.Mp3ListePfadSort, MB.AllPlaylistsPfadSort);
     SendMessage(MB.MainWindowHandle, WM_MedienBib, MB_SetStatus, BIB_Status_Free);
     try
         CloseHandle(MB.fHND_RefreshFilesThread);
@@ -2337,13 +2519,26 @@ begin
 end;
 procedure fRefreshFilesThread_Selected(MB: TMedienbibliothek);
 begin
-    MB.fRefreshFiles(MB.UpdateList);
+    MB.fRefreshFiles(MB.UpdateList, Nil);
     MB.UpdateList.Clear;
     SendMessage(MB.MainWindowHandle, WM_MedienBib, MB_SetStatus, BIB_Status_Free);
     try
         CloseHandle(MB.fHND_RefreshFilesThread);
     except
     end;
+end;
+
+procedure fRefreshPlaylistsThread(MB: TMedienbibliothek);
+begin
+  MB.InitiateRefreshProcess;
+  MB.fRefreshPlaylistFiles(MB.AllPlaylistsPfadSort);
+  MB.RefreshCollectionsPlaylistsOnly;
+  MB.FinishRefreshProcess;
+  SendMessage(MB.MainWindowHandle, WM_MedienBib, MB_SetStatus, BIB_Status_Free);
+  try
+      CloseHandle(MB.fHND_RefreshFilesThread);
+  except
+  end;
 end;
 
 function TMedienBibliothek.GetDefaultFileCategory: TLibraryFileCategory;
@@ -2392,6 +2587,9 @@ var
   i, actualCatIdx: Integer;
   checked: Boolean;
 begin
+
+  //bibFile := MedienBib.GetAudioFileWithFilename(Original.Pfad);
+
   result := False;
   checked := False;
   for i := 0 to FileCategories.Count - 1 do begin
@@ -2427,11 +2625,100 @@ begin
   end;
 end;
 
-procedure TMedienBibliothek.fRefreshFiles(aRefreshList: TAudioFileList);
+procedure TMedienBibliothek.fRefreshPlaylistFiles(aPlaylistRefreshList: TLibraryPlaylistList);
+var
+  i, freq, ges: Integer;
+  ct, nt: Cardinal;
+begin
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_BlockReadAccess, 0); //
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_SetWin7TaskbarProgress, Integer(TTaskBarProgressState.Normal));
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_StartLongerProcess, Integer(pa_RefreshPlaylistFiles));
+
+  ges := aPlaylistRefreshList.Count;
+  freq := Round(aPlaylistRefreshList.Count / 100) + 1;
+  ct := GetTickCount;
+  for i := 0 to aPlaylistRefreshList.Count - 1 do
+  begin
+        if FileExists(aPlaylistRefreshList[i].Path) then
+          fScanPlaylistFile(aPlaylistRefreshList[i], tm_Thread)
+        else begin
+          if aPlaylistRefreshList[i].CoverID = '' then
+            aPlaylistRefreshList[i].CoverID := '_';
+          DeadPlaylists.Add(aPlaylistRefreshList[i]);
+        end;
+
+        nt := GetTickCount;
+        if (i mod freq = 0) or (nt > ct + 500) or (nt < ct) then
+        begin
+            ct := nt;
+            SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressCurrentFileOrDirUpdate,
+                            Integer(PWideChar(Format(_(MediaLibrary_ScanningPlaylistsInDir),
+                                                  [ ExtractFilePath(aPlaylistRefreshList[i].Path) ]))));
+            SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressScanningNewFiles,
+                            Integer(PWideChar(Format(_(MediaLibrary_ScanningPlaylistsCount),
+                                                  [ i, ges ]))));
+            SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressRefreshJustProgressbar, Round(i/ges * 100));
+
+            SendMessage(MainWindowHandle, WM_MedienBib, MB_CurrentProcessSuccessCount, (i+1) - DeadPlaylists.Count);
+            SendMessage(MainWindowHandle, WM_MedienBib, MB_CurrentProcessFailCount, DeadPlaylists.Count);
+        end;
+
+        if Not UpdateFortsetzen then break;
+  end;
+end;
+
+procedure TMedienBibliothek.InitiateRefreshProcess;
+begin
+  EnterCriticalSection(CSUpdate);
+end;
+
+procedure TMedienBibliothek.FinishRefreshProcess;
+var
+  DeleteDataList: TObjectList;
+begin
+  if (DeadFiles.Count + DeadPlaylists.Count) > 0 then
+  begin
+      // SendMessage(MainWindowHandle, WM_MedienBib, MB_DeadFilesWarning, LParam(DeadFiles.Count));
+      DeleteDataList := TObjectList.Create(True);
+      try
+          fPrepareUserInputDeadFiles(DeleteDataList);
+          SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressShowHint, Integer(PChar(_(MediaLibrary_SearchingMissingFilesComplete_PrepareUserInput))));
+          SendMessage(MainWindowHandle, WM_MedienBib, MB_UserInputDeadFiles, lParam(DeleteDataList));
+          // user can change DeleteDataList (set the DoDelete-property of the objects)
+          // so: Change the DeadFiles-list and fill it with the files that should be deleted.
+          fReFillDeadFilesByDataList(DeleteDataList);
+      finally
+          DeleteDataList.Free;
+      end;
+
+      if (DeadFiles.Count + DeadPlaylists.Count) > 0 then
+      begin
+          fPrepareDeleteFilesUpdate;
+          RefreshCollections;
+          BuildSearchStrings;
+          SendMessage(MainWindowHandle, WM_MedienBib, MB_CheckAnzeigeList, 0);
+          fCleanUpDeadFiles;
+          CleanUpTmpLists;
+      end;
+
+      SendMessage(MainWindowHandle, WM_MedienBib, MB_SetStatus, BIB_Status_Free); // status: ok, thread finished
+  end;
+
+  LeaveCriticalSection(CSUpdate);
+
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_UpdateProcessComplete,
+                        Integer(PChar(_(MediaLibrary_RefreshingFilesCompleteFinished ) )));
+
+  // Status zurücksetzen, Unblock library
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_UnBlock, 0);
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_SetWin7TaskbarProgress, Integer(TTaskBarProgressState.None));
+
+end;
+
+procedure TMedienBibliothek.fRefreshFiles(aRefreshList: TAudioFileList; aPlaylistRefreshList: TLibraryPlaylistList);
 var i, freq, ges: Integer;
     AudioFile: TAudioFile;
     einUpdate: boolean;
-    DeleteDataList: TObjectList;
     ct, nt: Cardinal;
 begin
   // AudioFiles will be changed. Block everything.
@@ -2439,9 +2726,9 @@ begin
   SendMessage(MainWindowHandle, WM_MedienBib, MB_SetWin7TaskbarProgress, Integer(TTaskBarProgressState.Normal));
   SendMessage(MainWindowHandle, WM_MedienBib, MB_StartLongerProcess, Integer(pa_RefreshFiles));
 
-  einUpdate := False;
+  InitiateRefreshProcess;
 
-  EnterCriticalSection(CSUpdate);
+  einUpdate := False;
   ges := aRefreshList.Count;
   freq := Round(aRefreshList.Count / 100) + 1;
   ct := GetTickCount;
@@ -2476,8 +2763,11 @@ begin
         if Not UpdateFortsetzen then break;
   end;
 
-  SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressRefreshJustProgressbar, 100);
+  if UpdateFortsetzen and assigned(aPlaylistRefreshList) then begin
+    fRefreshPlaylistFiles(aPlaylistRefreshList);
+  end;
 
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressRefreshJustProgressbar, 100);
 
   // first: adjust Browse&Search stuff for the new data
   if einUpdate then
@@ -2492,44 +2782,8 @@ begin
       BuildSearchStrings;
   end;
 
-  // After this: Handle missing files
-  if DeadFiles.Count > 0 then
-  begin
-      // SendMessage(MainWindowHandle, WM_MedienBib, MB_DeadFilesWarning, LParam(DeadFiles.Count));
-      DeleteDataList := TObjectList.Create(True);
-      try
-          fPrepareUserInputDeadFiles(DeleteDataList);
-          SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressShowHint, Integer(PChar(_(MediaLibrary_SearchingMissingFilesComplete_PrepareUserInput))));
-          SendMessage(MainWindowHandle, WM_MedienBib, MB_UserInputDeadFiles, lParam(DeleteDataList));
-          // user can change DeleteDataList (set the DoDelete-property of the objects)
-          // so: Change the DeadFiles-list and fill it with the files that should be deleted.
-          fReFillDeadFilesByDataList(DeleteDataList);
-      finally
-          DeleteDataList.Free;
-      end;
-
-      if (DeadFiles.Count{ + DeadPlaylists.Count}) > 0 then
-      // (we haven't checked for playlist during "refreshing files"
-      begin
-          fPrepareDeleteFilesUpdate;
-          RefreshCollections;
-          BuildSearchStrings;
-          SendMessage(MainWindowHandle, WM_MedienBib, MB_CheckAnzeigeList, 0);
-          fCleanUpDeadFiles;
-          CleanUpTmpLists;
-      end;
-
-      SendMessage(MainWindowHandle, WM_MedienBib, MB_SetStatus, BIB_Status_Free); // status: ok, thread finished
-  end;
-
-  LeaveCriticalSection(CSUpdate);
-
-  SendMessage(MainWindowHandle, WM_MedienBib, MB_UpdateProcessComplete,
-                        Integer(PChar(_(MediaLibrary_RefreshingFilesCompleteFinished ) )));
-
-  // Status zurücksetzen, Unblock library
-  SendMessage(MainWindowHandle, WM_MedienBib, MB_UnBlock, 0);
-  SendMessage(MainWindowHandle, WM_MedienBib, MB_SetWin7TaskbarProgress, Integer(TTaskBarProgressState.None));
+  // Handle missing files and finish process
+  FinishRefreshProcess;
 
   // Changed Setz. Ja...IMMER. Eine Abfrage, ob sich _irgendwas_ an _irgendeinem_ File
   // geändert hat, führe ich nicht durch.
@@ -3309,8 +3563,8 @@ begin
 
   result := true;
 
-  if aAudioFile = CurrentAudioFile then
-      currentAudioFile := Nil;
+  // if aAudioFile = CurrentAudioFile then
+  //  currentAudioFile := Nil;
 
   LastBrowseResultList      .Extract(aAudioFile);
   LastQuickSearchResultList .Extract(aAudioFile);
@@ -3677,15 +3931,15 @@ end;
     - Check, whether fa file is already in the library
     --------------------------------------------------------
 }
-function TMedienBibliothek.AudioFileExists(aFilename: UnicodeString): Boolean;
+function TMedienBibliothek.AudioFileExists(const aFilename: UnicodeString): Boolean;
 begin
     result := binaersuche(Mp3ListePfadSort, ExtractFileDir(aFilename), ExtractFileName(aFilename), 0,Mp3ListePfadSort.Count-1) > -1;
 end;
-function TMedienBibliothek.PlaylistFileExists(aFilename: UnicodeString): Boolean;
+function TMedienBibliothek.PlaylistFileExists(const aFilename: UnicodeString): Boolean;
 begin
     result := BinaerPlaylistSuche(AllPlaylistsPfadSort, aFilename, 0, AllPlaylistsPfadSort.Count-1) > -1;
 end;
-function TMedienBibliothek.GetAudioFileWithFilename(aFilename: UnicodeString): TAudioFile;
+function TMedienBibliothek.GetAudioFileWithFilename(const aFilename: UnicodeString): TAudioFile;
 var idx: Integer;
 begin
   idx := binaersuche(Mp3ListePfadSort,ExtractFileDir(aFilename), ExtractFileName(aFilename),0,Mp3ListePfadSort.Count-1);
@@ -3693,6 +3947,15 @@ begin
     result := Nil
   else
     result := Mp3ListePfadSort[idx];
+end;
+function TMedienBibliothek.GetAudioFileWithFilename(const aFilename: UnicodeString; SourceList: TAudioFileList): TAudioFile;
+var idx: Integer;
+begin
+  idx := binaersuche(SourceList,ExtractFileDir(aFilename), ExtractFileName(aFilename),0,SourceList.Count-1);
+  if idx = -1 then
+    result := Nil
+  else
+    result := SourceList[idx];
 end;
 
 // GenerateCoverListFromSearchResult
@@ -3786,12 +4049,12 @@ begin
           SortAnzeigeliste;
       end;
       ccPlaylists: begin
-        CurrentAudioFile := Nil;
+        // CurrentAudioFile := Nil;
         BibSearcher.GetNewEmptyListMessage(elmPlaylist);
         DisplayContent := DISPLAY_BrowsePlaylist;
       end;
       ccWebStations: begin  // nothing to do, there are no files to display at all.
-        CurrentAudioFile := Nil;
+        // CurrentAudioFile := Nil;
         BibSearcher.GetNewEmptyListMessage(elmTitle);
       end;
     end;
@@ -4479,7 +4742,7 @@ begin
         try
             fs.LoadFromFile(aFilename);
             fs.Position := 0;
-            LoadRadioStationsFromStream_DEPRECATED(fs);
+            LoadRadioStationsFromStream(fs);
             Changed := True;
         finally
             fs.Free;
@@ -4521,6 +4784,98 @@ end;
        No Webradio stations
     --------------------------------------------------------
 }
+procedure TMedienBibliothek.PrepareExport;
+begin
+  if not assigned(fAudioExport) then
+    fAudioExport := TAudioExport.Create(SavePath);
+
+  if not assigned(FormExport) then
+    Application.CreateForm(TFormExport, FormExport);
+
+  FormExport.AudioExport := AudioExport; // Set this first before anything else !
+  FormExport.SearchTemplates;
+  FormExport.ExportMode := ExportMode;
+  FormExport.DefaultTemplate := ExportTemplate;
+  FormExport.ExportDirectory := ExportDirectory;
+  FormExport.ExportFilename := ExportFilename;
+end;
+
+function TMedienBibliothek.DoExport(Mode: Integer; TargetFilename: String): Boolean;
+var
+  tmpList: TAudioFileList;
+begin
+  if StatusBibUpdate >= 2 then begin
+    result := False;
+    exit;
+  end;
+
+  ExportMode := Mode;
+  ExportDirectory := ExtractFilePath(TargetFilename);
+  ExportFilename := TargetFilename;
+  ExportTemplate := fAudioExport.TemplateFilename;
+
+  EnterCriticalSection(CSUpdate);
+  try
+    try
+      case ExportMode of
+        0: result := fAudioExport.ExportFiles(Mp3ListePfadSort, ExportFilename);
+        1: begin
+          if (CurrentCategory is TLibraryFileCategory) then begin
+            tmpList := TAudioFileList.Create(False);
+            try
+              CurrentCategory.Collections[0].GetFiles(tmpList, True, False);
+              result := fAudioExport.ExportFiles(tmpList, ExportFilename);
+            finally
+              tmpList.Free;
+            end;
+          end else
+            result := False;
+        end;
+        2: result := fAudioExport.ExportFiles(AnzeigeListe, ExportFilename);
+      else
+        result := False;
+      end;
+
+    except
+      on E: Exception do begin
+        MessageDLG(E.Message, mtError, [mbOK], 0);
+        result := False;
+      end;
+    end;
+  finally
+    LeaveCriticalSection(CSUpdate);
+  end;
+end;
+
+function TMedienBibliothek.DoPlaylistExport(Playlist: TAudioFileList; TargetFilename: String): Boolean;
+begin
+  ExportMode := 3;
+  ExportDirectory := ExtractFilePath(TargetFilename);
+  ExportFilename := TargetFilename;
+  ExportTemplate := fAudioExport.TemplateFilename;
+  try
+    result := fAudioExport.ExportFiles(Playlist, TargetFilename);
+  except
+    on E: Exception do begin
+      MessageDLG(E.Message, mtError, [mbOK], 0);
+      result := False;
+    end;
+  end;
+end;
+
+procedure TMedienBibliothek.FinishExport(Finished: Boolean);
+begin
+  (*if Finished then begin
+    ExportMode := FormExport.ExportMode;
+    ExportTemplate := FormExport.DefaultTemplate;
+    ExportDirectory := FormExport.ExportDirectory;
+    ExportFilename := FormExport.ExportFilename;
+  end;
+  *)
+  FreeAndNil(fAudioExport);
+end;
+
+
 function TMedienBibliothek.SaveAsCSV(aFilename: UnicodeString): boolean;
 var i: integer;
   tmpStrList : TStringList;
@@ -5062,6 +5417,7 @@ begin
         for i := 0 to AllPlaylistsPfadSort.Count - 1 do
         begin
             existingPL := AllPlaylistsPfadSort[i];
+            NewLibraryPlaylist.CoverID := existingPL.CoverID;
 
             if (existingPL.Path[1] = LibrarySaveDriveChar) and TDrivemanager.EnableCloudMode then
             begin
@@ -5433,10 +5789,38 @@ begin
     FileCategories[catIdx].SortCollections(True);
   end;
 
+  for catIdx := 0 to PlaylistCategories.Count - 1 do
+    PlaylistCategories[catIdx].AnalyseCollections(false);
+
   // refill view
   if FullRefill then
     SendMessage(MainWindowHandle, WM_MedienBib, MB_RefillTrees, LParam(True));
 end;
+
+procedure TMedienBibliothek.RefreshCollectionsPlaylistsOnly(FullRefill: Boolean = True);
+var
+  catIdx: Integer;
+begin
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_ProgressShowHint, Integer(PChar(MediaLibrary_RefreshingFilesPreparingLibrary)));
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_BlockReadAccess, 0);
+
+  // this method may be called by VCL- and background-Threads
+  case BrowseMode of
+    // ClearEmptyNodes first: Otherwise we get some access violations (e.g. on GetImageIndex)
+    0: SendMessage(MainWindowHandle, WM_MedienBib, MB_ClearEmptyNodes, 0);
+    1: ;
+    2: ;
+  end;
+  DeleteEmptyPlaylistCollections;
+
+  for catIdx := 0 to PlaylistCategories.Count - 1 do
+    PlaylistCategories[catIdx].AnalyseCollections(false); // this will transfer the Playlist.CoverID to the Collection.CoverID
+
+  // refill view
+  if FullRefill then
+    SendMessage(MainWindowHandle, WM_MedienBib, MB_RefillTrees, LParam(True));
+end;
+
 
 procedure TMedienBibliothek.RefreshWebRadioCategory;
 begin
@@ -5492,6 +5876,7 @@ end;
 
 procedure TMedienBibliothek.ReFillFileCategories;
 begin
+  SendMessage(MainWindowHandle, WM_MedienBib, MB_ClearBrowseTrees, 0);
   CreateRootCollections;
   MergeFileIntoCategories(Mp3ListePfadSort);
   SendMessage(MainWindowHandle, WM_MedienBib, MB_RefillTrees, 1);
@@ -5591,7 +5976,7 @@ var
   i: Integer;
   curIdx, targetIdx: Byte;
 begin
-  if Action = caNone then
+  if Action = LibraryOrganizer.Base.caNone then
     exit;
 
   // remove Files from the current Category
@@ -6139,8 +6524,8 @@ begin
     // - without Mp3ListePfadSort.Extract (this is done before more efficiently)
     // - without check for "AnzeigeShowsPlaylistFiles" (we do have "real" files here)
     // - no AudioFile.free (this is done later)
-    if missingFiles[i] = CurrentAudioFile then
-      currentAudioFile := Nil;
+    //if missingFiles[i] = CurrentAudioFile then
+    //  currentAudioFile := Nil;
 
     LastBrowseResultList      .Extract(missingFiles[i]);
     LastQuickSearchResultList .Extract(missingFiles[i]);

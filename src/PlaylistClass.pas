@@ -41,7 +41,7 @@ uses Windows, Forms, Contnrs, SysUtils,  VirtualTrees, IniFiles, Classes,
     gnuGettext, Nemp_RessourceStrings, System.UITypes, System.Types,
     System.Generics.Defaults,
 
-    MainFormHelper, CoverHelper, DriveRepairTools;
+    MainFormHelper, CoverHelper, DriveRepairTools, cddaUtils;
 
 type
   DWORD = cardinal;
@@ -71,7 +71,7 @@ type
       fAutoMix: Boolean;                  // Mix playlist after the last title
       fJumpToNextCueOnNextClick: Boolean; // Jump only to next cue on "Next"
       fRepeatCueOnRepeatTitle: Boolean;   // repeat the current entry in cuesheet wehn "repeat title" is selected
-      fShowHintsInPlaylist: Boolean;
+      // fShowHintsInPlaylist: Boolean;
       fPlayCounter: Integer;              // used for a "better random" selection
 
       fInsertIndex: Integer;              // The Index where files are inserted during adding files (e.g. Drag&Drop)
@@ -193,6 +193,8 @@ type
 
       // default-action when the user doubleclick an item in the medialibrary
       DefaultAction: Integer;
+      ApplyDefaultActionToWholeList: Boolean;
+      UseDefaultActionOnCoverFlowDoubleClick: Boolean;
       // default-action when the user clicks "Add current Headphone-title to playlist"
       HeadSetAction: Integer;
       AutoStopHeadsetSwitchTab: Boolean;
@@ -242,8 +244,7 @@ type
       property RepeatCueOnRepeatTitle: Boolean read fRepeatCueOnRepeatTitle write fRepeatCueOnRepeatTitle;
       property RememberInterruptedPlayPosition: Boolean read fRememberInterruptedPlayPosition write fRememberInterruptedPlayPosition;
       property ShowIndexInTreeview: Boolean read fShowIndexInTreeview write fShowIndexInTreeview;
-
-      property ShowHintsInPlaylist: Boolean read fShowHintsInPlaylist write fShowHintsInPlaylist;
+      //property ShowHintsInPlaylist: Boolean read fShowHintsInPlaylist write fShowHintsInPlaylist;
 
       property PlayCounter: Integer read fPlayCounter;
 
@@ -294,6 +295,7 @@ type
       procedure PreparePlayAgain;
       procedure Pause;
       procedure Stop;
+      procedure TogglePlayPause(DirectUserInput: Boolean);
 
       procedure ClearPlaylist(StopPlayer: Boolean = True);      // Delete whole playlist
       procedure DeleteDeadFiles;    // Delete dead (non existing) files
@@ -369,6 +371,8 @@ type
 
       // new in 4.14: just as in the media library
       procedure ReSynchronizeDrives;
+
+      procedure SynchFilesWithCDDrive(CDDADrive: TCDDADrive);
   end;
 
 implementation
@@ -429,6 +433,8 @@ end;
 procedure TNempPlaylist.LoadSettings;
 begin
   DefaultAction         := NempSettingsManager.ReadInteger('Playlist','DefaultAction',0);
+  ApplyDefaultActionToWholeList := NempSettingsManager.ReadBool('Playlist','ApplyDefaultActionToWholeList',False);
+  UseDefaultActionOnCoverFlowDoubleClick := NempSettingsManager.ReadBool('Playlist','UseDefaultActionOnCoverFlowDoubleClick', False);
   HeadSetAction         := NempSettingsManager.ReadInteger('Playlist','HeadSetAction',0);
   AutoStopHeadsetSwitchTab       := NempSettingsManager.ReadBool('Playlist','AutoStopHeadset',True);
   AutoStopHeadsetAddToPlayist    := NempSettingsManager.ReadBool('Playlist','AutoStopHeadsetAddToPlayist',False);
@@ -445,7 +451,7 @@ begin
   fJumpToNextCueOnNextClick       := NempSettingsManager.ReadBool('Playlist', 'JumpToNextCueOnNextClick', True);
   fRepeatCueOnRepeatTitle         := NempSettingsManager.ReadBool('Playlist', 'RepeatCueOnRepeatTitle', True);
   fRememberInterruptedPlayPosition:= NempSettingsManager.ReadBool('Playlist', 'RememberInterruptedPlayPosition', True);
-  fShowHintsInPlaylist  := NempSettingsManager.ReadBool('Playlist', 'ShowHintsInPlaylist', True);
+  // fShowHintsInPlaylist  := NempSettingsManager.ReadBool('Playlist', 'ShowHintsInPlaylist', True);
   RandomRepeat          := NempSettingsManager.ReadInteger('Playlist', 'RandomRepeat', 25);
   TNA_PlaylistCount     := NempSettingsManager.ReadInteger('Playlist','TNA_PlaylistCount',30);
   fStartIndex         := NempSettingsManager.ReadInteger('Playlist','IndexinList',0);
@@ -473,6 +479,8 @@ end;
 procedure TNempPlaylist.SaveSettings;
 begin
   NempSettingsManager.WriteInteger('Playlist','DefaultAction', DefaultAction);
+  NempSettingsManager.WriteBool('Playlist','ApplyDefaultActionToWholeList',ApplyDefaultActionToWholeList);
+  NempSettingsManager.WriteBool('Playlist','UseDefaultActionOnCoverFlowDoubleClick', UseDefaultActionOnCoverFlowDoubleClick);
   NempSettingsManager.WriteInteger('Playlist','HeadSetAction',HeadSetAction);
   NempSettingsManager.WriteBool('Playlist','AutoStopHeadset',AutoStopHeadsetSwitchTab);
   NempSettingsManager.WriteBool('Playlist','AutoStopHeadsetAddToPlayist',AutoStopHeadsetAddToPlayist);
@@ -510,7 +518,7 @@ begin
   NempSettingsManager.WriteBool('Playlist', 'RepeatCueOnRepeatTitle', fRepeatCueOnRepeatTitle);
   NempSettingsManager.WriteBool('Playlist', 'RememberInterruptedPlayPosition', fRememberInterruptedPlayPosition);
 
-  NempSettingsManager.WriteBool('Playlist', 'ShowHintsInPlaylist', fShowHintsInPlaylist);
+  // NempSettingsManager.WriteBool('Playlist', 'ShowHintsInPlaylist', fShowHintsInPlaylist);
   NempSettingsManager.WriteInteger('Playlist', 'RandomRepeat', RandomRepeat);
   NempSettingsManager.WriteBool('Playlist', 'BassHandlePlaylist', BassHandlePlaylist);
   NempSettingsManager.WriteString('Playlist', 'InitialDialogFolder', InitialDialogFolder);
@@ -961,6 +969,43 @@ begin
   Player.stop;
 end;
 
+procedure TNempPlaylist.TogglePlayPause(DirectUserInput: Boolean);
+begin
+  case Player.BassStatus of
+      BASS_ACTIVE_PAUSED  : begin
+            if DirectUserInput then
+              Player.LastUserWish := USER_WANT_PLAY;
+            Player.resume;
+      end;
+      BASS_ACTIVE_STOPPED : begin
+            if DirectUserInput then
+              NempPlayer.LastUserWish := USER_WANT_PLAY;
+            // Der Stream-Status ist also STOPPED
+            // Da kann durch echten Stop passiert sein,
+            // oder durch ein ausfaden nach Klick auf den Pause-Button.
+            if Player.Status = PLAYER_ISPAUSED then
+              Player.resume
+            else
+              PlayAgain(True);
+      end;
+      BASS_ACTIVE_PLAYING: begin
+            if Player.Status = PLAYER_ISPLAYING then begin
+              if DirectUserInput then
+                Player.LastUserWish := USER_WANT_STOP;
+              Pause;
+            end
+            else
+              if Player.Status = PLAYER_ISPAUSED then begin
+                  if DirectUserInput then
+                    Player.LastUserWish := USER_WANT_PLAY;
+                  Player.resume;
+              end;
+      end;
+    end;
+end;
+
+
+
 
 {
     --------------------------------------------------------
@@ -1235,9 +1280,9 @@ begin
             // todo
             if ReloadDataFromFile then
             begin
-                //if NempOptions.UseCDDB then
-                //    AudioFile.GetAudioData(AudioFile.Pfad, GAD_CDDB)
-                //else
+                if NempOptions.UseCDDB then
+                    AudioFile.GetAudioData(AudioFile.Pfad, GAD_CDDB)
+                else
                     AudioFile.GetAudioData(AudioFile.Pfad, 0);
             end;
         end;
@@ -1367,8 +1412,13 @@ begin
     NewFile.Pfad := aAudiofileName;
     // ... GetAudioData for this file ...
     case NewFile.AudioType of
-        at_File: SynchNewFileWithBib(newFile);
-        at_CDDA: NewFile.GetAudioData(aAudioFileName, 0);
+        at_File: SynchNewFileWithBib(NewFile);
+        at_CDDA: begin
+                  if NempOptions.UseCDDB then
+                    NewFile.GetAudioData(NewFile.Pfad, GAD_CDDB)
+                  else
+                    NewFile.GetAudioData(NewFile.Pfad, 0);
+        end;
     end;
     // ... and add it to the playlist
     AddFileToPlaylist(NewFile, aCueName);
@@ -1409,7 +1459,12 @@ begin
 
   case NewFile.AudioType of
       at_File: SynchNewFileWithBib(NewFile);
-      at_CDDA: NewFile.GetAudioData(aAudioFileName, 0);
+      at_CDDA: begin
+                  if NempOptions.UseCDDB then
+                    NewFile.GetAudioData(NewFile.Pfad, GAD_CDDB)
+                  else
+                    NewFile.GetAudioData(NewFile.Pfad, 0);
+        end;
   end;
   InsertFileToPlayList(NewFile, aCueName);
 
@@ -2297,6 +2352,24 @@ begin
                 Playlist[i].FileIsPresent := FileExists(Playlist[i].Pfad);
         end;
     end;
+end;
+
+procedure TNempPlaylist.SynchFilesWithCDDrive(CDDADrive: TCDDADrive);
+var
+  i: Integer;
+  TrackData: TCDTrackData;
+begin
+  for i := 0 to Playlist.Count - 1 do begin
+    if (length(Playlist[i].Pfad) > 0) and (Playlist[i].Pfad[1] = CDDADrive.Letter) then begin
+      CDDADrive.GetTrackData(Playlist[i].Pfad, TrackData);
+      Playlist[i].AssignCDTrackData(TrackData);
+    end;
+  end;
+  fDauer := CalculateDuration;
+  if assigned(fOnFilePropertiesChanged) then
+    fOnFilePropertiesChanged(self);
+  if assigned(fOnPropertiesChanged) then
+    fOnPropertiesChanged(self);
 end;
 
 {

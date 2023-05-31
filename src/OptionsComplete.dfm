@@ -110,7 +110,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Caption = 'Failsafe'
             TabOrder = 4
             Visible = False
-            ExplicitWidth = 457
             object XXX_CB_BetaDontUseThreadedUpdate: TCheckBox
               Left = 16
               Top = 16
@@ -126,7 +125,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 128
             Caption = 'Hibernate/standby'
             TabOrder = 3
-            ExplicitWidth = 457
             object Btn_ReinitPlayerEngine: TButton
               Left = 16
               Top = 59
@@ -223,7 +221,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 180
             Caption = 'Nemp portable'
             TabOrder = 1
-            ExplicitWidth = 457
             object lblNempPortable: TLabel
               Left = 16
               Top = 113
@@ -281,7 +278,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 340
             Caption = 'Starting Nemp'
             TabOrder = 0
-            ExplicitWidth = 457
             object lblNempStartPlayer: TLabel
               Left = 16
               Top = 16
@@ -1323,7 +1319,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 175
             Caption = 'Extended viewing settings'
             TabOrder = 0
-            ExplicitWidth = 457
             object cb_limitMarkerToCurrentFiles: TCheckBox
               Left = 16
               Top = 56
@@ -1351,13 +1346,13 @@ object OptionsCompleteForm: TOptionsCompleteForm
               Caption = 'Skip sort on large lists (> 5000)'
               TabOrder = 1
             end
-            object CB_ShowHintsInPlaylist: TCheckBox
+            object CB_ShowAdvancedHints: TCheckBox
               Left = 16
               Top = 96
               Width = 402
               Height = 17
               Hint = 'Show hints in the playlist or not.'
-              Caption = 'Show hints in playlist'
+              Caption = 'Show advanced hints'
               TabOrder = 4
             end
             object CBFullRowSelect: TCheckBox
@@ -1369,14 +1364,15 @@ object OptionsCompleteForm: TOptionsCompleteForm
               Caption = 'Select full row in media list'
               TabOrder = 5
             end
-            object CBShowHintsInMedialist: TCheckBox
+            object CBShowHintsInTitlelists: TCheckBox
               Left = 16
               Top = 76
               Width = 402
               Height = 17
               Hint = 'Show hints in the library or not.'
-              Caption = 'Show hints in the media list'
+              Caption = 'Show hints in the playlist and the media list'
               TabOrder = 3
+              OnClick = CBAlwaysSortAnzeigeListClick
             end
           end
           object cpPlaylistFormatting: TCategoryPanel
@@ -1680,7 +1676,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 93
             Caption = 'Display of Albums, Directories, ...'
             TabOrder = 3
-            ExplicitWidth = 457
             object cbShowCoverForAlbum: TCheckBox
               Left = 16
               Top = 16
@@ -2529,7 +2524,7 @@ object OptionsCompleteForm: TOptionsCompleteForm
             object editCDNames: TLabeledEdit
               Left = 16
               Top = 123
-              Width = 154
+              Width = 0
               Height = 21
               Anchors = [akLeft, akTop, akRight]
               AutoSize = False
@@ -2538,7 +2533,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
               EditLabel.Caption = 'Folder names not forming an album of their own (comma separated)'
               TabOrder = 2
               Text = ''
-              ExplicitWidth = 188
             end
           end
           object cpCategoryCoverflow: TCategoryPanel
@@ -2648,7 +2642,7 @@ object OptionsCompleteForm: TOptionsCompleteForm
               Columns = <
                 item
                   Position = 0
-                  Width = 196
+                  Width = 192
                 end>
             end
             object btnCategoryEdit: TButton
@@ -2721,7 +2715,7 @@ object OptionsCompleteForm: TOptionsCompleteForm
               Columns = <
                 item
                   Position = 0
-                  Width = 196
+                  Width = 192
                 end>
             end
             object cbLibConfigShowPlaylistCategories: TCheckBox
@@ -2937,6 +2931,94 @@ object OptionsCompleteForm: TOptionsCompleteForm
               TabOrder = 10
             end
           end
+          object cpCDDB: TCategoryPanel
+            Top = 445
+            Height = 290
+            Caption = 'CDDB settings'
+            TabOrder = 1
+            object lblInvalidCDDBMail: TLabel
+              Left = 16
+              Top = 167
+              Width = 65
+              Height = 11
+              Caption = 'E-mail is invalid'
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object lblLocalCDDBCache: TLabel
+              Left = 16
+              Top = 194
+              Width = 181
+              Height = 14
+              Caption = 'Local cache for CDDB information'
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -12
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object cbUseCDDB: TCheckBox
+              Left = 16
+              Top = 39
+              Width = 393
+              Height = 17
+              Caption = 'Use online CDDB to get audio CD information'
+              TabOrder = 1
+            end
+            object cbPreferCDDB: TCheckBox
+              Left = 16
+              Top = 62
+              Width = 401
+              Height = 17
+              Caption = 'Prefer CDDB information over CD-Text'
+              TabOrder = 2
+            end
+            object edtCDDBServer: TLabeledEdit
+              Left = 16
+              Top = 104
+              Width = 393
+              Height = 21
+              EditLabel.Width = 197
+              EditLabel.Height = 13
+              EditLabel.Caption = 'CDDB server (default: gnudb.gnudb.org)'
+              TabOrder = 3
+              Text = ''
+            end
+            object edtCDDBEMail: TLabeledEdit
+              Left = 16
+              Top = 144
+              Width = 393
+              Height = 21
+              EditLabel.Width = 53
+              EditLabel.Height = 13
+              EditLabel.Caption = 'Your e-mail'
+              TabOrder = 4
+              Text = ''
+              OnExit = edtCDDBEMailExit
+            end
+            object cbAutoCheckNewCDs: TCheckBox
+              Left = 16
+              Top = 16
+              Width = 401
+              Height = 17
+              Caption = 'Automatically scan new CDs'
+              TabOrder = 0
+            end
+            object btnClearCDDBCache: TButton
+              Left = 16
+              Top = 214
+              Width = 99
+              Height = 25
+              Caption = 'Clear cache'
+              TabOrder = 5
+              OnClick = btnClearCDDBCacheClick
+            end
+          end
         end
       end
       object tabSearch: TTabSheet
@@ -3113,11 +3195,10 @@ object OptionsCompleteForm: TOptionsCompleteForm
           TabOrder = 0
           OnMouseWheel = CategoryPanelGroupMouseWheel
           object cpAdvanced: TCategoryPanel
-            Top = 887
+            Top = 1012
             Height = 76
             Caption = 'Advanced'
-            TabOrder = 4
-            ExplicitWidth = 457
+            TabOrder = 0
             object cb_SafePlayback: TCheckBox
               Left = 16
               Top = 16
@@ -3128,10 +3209,10 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
           end
           object cpVisualisation: TCategoryPanel
-            Top = 725
+            Top = 850
             Height = 162
             Caption = 'Visualization'
-            TabOrder = 3
+            TabOrder = 1
             object Lbl_Framerate: TLabel
               Left = 191
               Top = 42
@@ -3186,11 +3267,10 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
           end
           object cpSilenceDetection: TCategoryPanel
-            Top = 538
+            Top = 663
             Height = 187
             Caption = 'Pause between tracks'
             TabOrder = 2
-            ExplicitWidth = 457
             object Lbl_SilenceDB: TLabel
               Left = 95
               Top = 59
@@ -3263,10 +3343,9 @@ object OptionsCompleteForm: TOptionsCompleteForm
           end
           object cpFading: TCategoryPanel
             Top = 350
-            Height = 188
+            Height = 313
             Caption = 'Fading'
-            TabOrder = 1
-            ExplicitWidth = 457
+            TabOrder = 3
             object LblConst_ms1: TLabel
               Left = 90
               Top = 64
@@ -3298,6 +3377,14 @@ object OptionsCompleteForm: TOptionsCompleteForm
               Height = 13
               Hint = 'Fading length when scrolling inside a song.'
               Caption = 'On position change'
+            end
+            object lblIdentifyLiveTracksBy: TLabel
+              Left = 48
+              Top = 171
+              Width = 377
+              Height = 13
+              AutoSize = False
+              Caption = 'Identify live tracks by'
             end
             object CB_Fading: TCheckBox
               Left = 16
@@ -3360,12 +3447,53 @@ object OptionsCompleteForm: TOptionsCompleteForm
               TabOrder = 2
               Value = 2000
             end
+            object cbIgnoreFadingOnLiveRecordings: TCheckBox
+              Left = 32
+              Top = 148
+              Width = 393
+              Height = 17
+              Caption = 'No fading between live tracks'
+              TabOrder = 6
+              OnClick = CB_FadingClick
+            end
+            object edtLiveRecordingCheckIdentifier: TEdit
+              Left = 48
+              Top = 190
+              Width = 121
+              Height = 21
+              TabOrder = 7
+              Text = 'live'
+            end
+            object cbLiveRecordingCheckTitle: TCheckBox
+              Left = 48
+              Top = 216
+              Width = 377
+              Height = 17
+              Caption = 'Check title'
+              TabOrder = 8
+            end
+            object cbLiveRecordingCheckAlbum: TCheckBox
+              Left = 48
+              Top = 236
+              Width = 377
+              Height = 17
+              Caption = 'Check album name'
+              TabOrder = 9
+            end
+            object cbLiveRecordingCheckTags: TCheckBox
+              Left = 48
+              Top = 256
+              Width = 377
+              Height = 17
+              Caption = 'Check extended tags'
+              TabOrder = 10
+            end
           end
           object cpOutputDevices: TCategoryPanel
             Top = 0
             Height = 350
             Caption = 'Output devices'
-            TabOrder = 0
+            TabOrder = 4
             object LblConst_MainDevice: TLabel
               Left = 16
               Top = 16
@@ -3540,11 +3668,10 @@ object OptionsCompleteForm: TOptionsCompleteForm
           TabOrder = 0
           OnMouseWheel = CategoryPanelGroupMouseWheel
           object cpPlaylistLog: TCategoryPanel
-            Top = 770
+            Top = 818
             Height = 120
             Caption = 'Playlist log'
             TabOrder = 3
-            ExplicitWidth = 457
             object LblLogDuration: TLabel
               Left = 36
               Top = 39
@@ -3580,11 +3707,10 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
           end
           object cpRandomPlayback: TCategoryPanel
-            Top = 420
+            Top = 468
             Height = 350
             Caption = 'Random playback'
             TabOrder = 2
-            ExplicitWidth = 457
             object lbl_WeightedRandom: TLabel
               Left = 34
               Top = 100
@@ -3929,11 +4055,10 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
           end
           object cpPlaylistBehaviour: TCategoryPanel
-            Top = 185
+            Top = 233
             Height = 235
             Caption = 'General playlist settings'
             TabOrder = 1
-            ExplicitWidth = 457
             object CB_AutoScanPlaylist: TCheckBox
               Left = 16
               Top = 16
@@ -4024,7 +4149,7 @@ object OptionsCompleteForm: TOptionsCompleteForm
           end
           object cpPlaylistDefaultActions: TCategoryPanel
             Top = 0
-            Height = 185
+            Height = 233
             Caption = 'Default actions'
             TabOrder = 0
             object LblPlaylistDefaultAction: TLabel
@@ -4037,7 +4162,7 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
             object LblHeadsetDefaultAction: TLabel
               Left = 16
-              Top = 64
+              Top = 109
               Width = 405
               Height = 13
               AutoSize = False
@@ -4045,19 +4170,19 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
             object cb_AutoStopHeadsetAddToPlayist: TCheckBox
               Left = 16
-              Top = 128
+              Top = 175
               Width = 405
               Height = 17
               Caption = 'Stop headset when adding headset file to playlist'
-              TabOrder = 3
+              TabOrder = 5
             end
             object cb_AutoStopHeadsetSwitchTab: TCheckBox
               Left = 16
-              Top = 108
+              Top = 155
               Width = 413
               Height = 17
               Caption = 'Stop headset when switching to another tab'
-              TabOrder = 2
+              TabOrder = 4
             end
             object GrpBox_DefaultAction: TComboBox
               Left = 16
@@ -4076,19 +4201,35 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
             object GrpBox_HeadsetDefaultAction: TComboBox
               Left = 16
-              Top = 81
+              Top = 128
               Width = 285
               Height = 21
               Hint = 'Insert mode for files from the headset'
               Style = csDropDownList
               ItemIndex = 0
-              TabOrder = 1
+              TabOrder = 3
               Text = 'Enqueue at the end of the playlist'
               Items.Strings = (
                 'Enqueue at the end of the playlist'
                 'Play (and clear current playlist)'
                 'Enqueue after current track'
                 'Just play (don'#39't change the playlist)')
+            end
+            object cbApplyDefaultActionToWholeList: TCheckBox
+              Left = 16
+              Top = 59
+              Width = 401
+              Height = 17
+              Caption = 'Add complete list, not only the selected title'
+              TabOrder = 1
+            end
+            object cbUseDefaultActionOnCoverFlowDoubleClick: TCheckBox
+              Left = 16
+              Top = 79
+              Width = 401
+              Height = 17
+              Caption = 'Use default action on double-click in Coverflow'
+              TabOrder = 2
             end
           end
         end
@@ -4254,7 +4395,7 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
             object cbFilenameFormat: TComboBox
               Left = 16
-              Top = 95
+              Top = 99
               Width = 393
               Height = 21
               TabOrder = 3
@@ -5223,7 +5364,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Top = 209
             Caption = 'User rights'
             TabOrder = 1
-            ExplicitWidth = 457
             object LblConst_Password2: TLabel
               Left = 224
               Top = 16
@@ -5257,7 +5397,7 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
             object cbAllowRemoteControl: TCheckBox
               Left = 16
-              Top = 130
+              Top = 144
               Width = 397
               Height = 15
               Hint = 'Let the user control the player (play/stop/next/volume/...)'
@@ -5267,7 +5407,7 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
             object cbPermitLibraryAccess: TCheckBox
               Left = 16
-              Top = 98
+              Top = 96
               Width = 397
               Height = 15
               Hint = 'Let the user search and browse in your library'
@@ -5276,11 +5416,11 @@ object OptionsCompleteForm: TOptionsCompleteForm
             end
             object cbPermitPlaylistDownload: TCheckBox
               Left = 16
-              Top = 114
+              Top = 112
               Width = 397
               Height = 15
-              Hint = 'Let the user download files from your playlist and/or library'
-              Caption = 'Permit downloading files from the playlist'
+              Hint = 'Let the user download files from your playlist and library'
+              Caption = 'Permit downloading files'
               TabOrder = 4
             end
             object cbPermitVote: TCheckBox
@@ -5309,6 +5449,15 @@ object OptionsCompleteForm: TOptionsCompleteForm
               Height = 21
               TabOrder = 0
               OnKeyPress = EdtUsernameKeyPress
+            end
+            object cbPermitHtmlAudio: TCheckBox
+              Left = 16
+              Top = 128
+              Width = 397
+              Height = 15
+              Hint = 'Let the user play files in the browser'
+              Caption = 'Permit Html audio'
+              TabOrder = 6
             end
           end
           object cpWebserverConfiguration: TCategoryPanel
@@ -5481,7 +5630,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 150
             Caption = 'Mixed settings'
             TabOrder = 5
-            ExplicitWidth = 457
             object lblCoverflowTextures: TLabel
               Left = 92
               Top = 19
@@ -5544,7 +5692,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 125
             Caption = 'Reflection'
             TabOrder = 4
-            ExplicitWidth = 457
             object lblCoverFlowIntensity: TLabel
               Left = 16
               Top = 37
@@ -5605,7 +5752,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 100
             Caption = 'Angles'
             TabOrder = 3
-            ExplicitWidth = 457
             object lblCoverFlowAngleLeft: TLabel
               Left = 16
               Top = 16
@@ -5680,7 +5826,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 130
             Caption = 'Spacing between cover art'
             TabOrder = 2
-            ExplicitWidth = 457
             object lblCoverFlowGapLeft: TLabel
               Left = 16
               Top = 16
@@ -5765,7 +5910,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 80
             Caption = 'Viewing position (x-axis)'
             TabOrder = 1
-            ExplicitWidth = 457
             object tbCoverViewPosition: TNempTrackBar
               AlignWithMargins = True
               Left = 16
@@ -5788,7 +5932,6 @@ object OptionsCompleteForm: TOptionsCompleteForm
             Height = 135
             Caption = 'Position of cover art (z-axis)'
             TabOrder = 0
-            ExplicitWidth = 457
             object LblCoverZLeft: TLabel
               Left = 16
               Top = 41
@@ -6140,7 +6283,7 @@ object OptionsCompleteForm: TOptionsCompleteForm
     object BtnHelp: TButton
       AlignWithMargins = True
       Left = 72
-      Top = 4
+      Top = 3
       Width = 75
       Height = 25
       Caption = 'Help'

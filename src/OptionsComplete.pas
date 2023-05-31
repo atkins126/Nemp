@@ -194,8 +194,8 @@ type
     cbReplaceArtistBy: TComboBox;
     cbReplaceTitleBy: TComboBox;
     cbReplaceAlbumBy: TComboBox;
-    CBShowHintsInMedialist: TCheckBox;
-    CB_ShowHintsInPlaylist: TCheckBox;
+    CBShowHintsInTitlelists: TCheckBox;
+    CB_ShowAdvancedHints: TCheckBox;
     CBFullRowSelect: TCheckBox;
     Lbl_Framerate: TLabel;
     CB_visual: TCheckBox;
@@ -626,6 +626,24 @@ type
     ImgHelp: TImage;
     CB_AccelerateSearchIncludeAlbumArtist: TCheckBox;
     CB_AccelerateSearchIncludeComposer: TCheckBox;
+    cpCDDB: TCategoryPanel;
+    cbUseCDDB: TCheckBox;
+    cbPreferCDDB: TCheckBox;
+    edtCDDBServer: TLabeledEdit;
+    edtCDDBEMail: TLabeledEdit;
+    lblInvalidCDDBMail: TLabel;
+    cbAutoCheckNewCDs: TCheckBox;
+    lblLocalCDDBCache: TLabel;
+    btnClearCDDBCache: TButton;
+    cbPermitHtmlAudio: TCheckBox;
+    cbUseDefaultActionOnCoverFlowDoubleClick: TCheckBox;
+    cbApplyDefaultActionToWholeList: TCheckBox;
+    cbIgnoreFadingOnLiveRecordings: TCheckBox;
+    lblIdentifyLiveTracksBy: TLabel;
+    edtLiveRecordingCheckIdentifier: TEdit;
+    cbLiveRecordingCheckTitle: TCheckBox;
+    cbLiveRecordingCheckAlbum: TCheckBox;
+    cbLiveRecordingCheckTags: TCheckBox;
     procedure FormCreate(Sender: TObject);
     procedure OptionsVSTFocusChanged(Sender: TBaseVirtualTree;
       Node: PVirtualNode; Column: TColumnIndex);
@@ -786,6 +804,8 @@ type
       var HintText: string);
     procedure cbPreferAlbumArtistClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure edtCDDBEMailExit(Sender: TObject);
+    procedure btnClearCDDBCacheClick(Sender: TObject);
 
   private
     { Private-Deklarationen }
@@ -877,6 +897,7 @@ type
     procedure EnableMediaLibraryFileTypeControls;
     procedure EnableAutomaticRatingControls;
     procedure EnableSearchControls;
+    procedure EnableListViewControls;
 
     procedure RefreshQRCode(aURL: String);
 
@@ -927,7 +948,7 @@ implementation
 
 uses NempMainUnit, Details, SplitForm_Hilfsfunktionen, WindowsVersionInfo,
   WebServerLog, MedienBibliothekClass, DriveRepairTools, WebQRCodes,
-  AudioDisplayUtils, unitFlyingCow, RedeemerQR, NempHelp;
+  AudioDisplayUtils, unitFlyingCow, RedeemerQR, NempHelp, cddaUtils;
 
 {$R *.dfm}
 
@@ -1256,6 +1277,13 @@ begin
   CB_IgnoreFadingOnShortTracks.Checked := NempPlayer.IgnoreFadingOnShortTracks;
   CB_IgnoreFadingOnPause.Checked := NempPlayer.IgnoreFadingOnPause;
   CB_IgnoreFadingOnStop.Checked := NempPlayer.IgnoreFadingOnStop;
+
+  cbIgnoreFadingOnLiveRecordings.Checked := NempPlayer.IgnoreFadingOnLiveRecordings;
+  cbLiveRecordingCheckTitle.Checked := NempPlayer.LiveRecordingCheckTitle;
+  cbLiveRecordingCheckAlbum.Checked := NempPlayer.LiveRecordingCheckAlbum;
+  cbLiveRecordingCheckTags.Checked := NempPlayer.LiveRecordingCheckTags;
+  edtLiveRecordingCheckIdentifier.Text := NempPlayer.LiveRecordingCheckIdentifier;
+
   EnableFadingControls;
   // Skip silence
   CB_SilenceDetection.Checked  := NempPlayer.DoSilenceDetection;
@@ -1309,6 +1337,8 @@ begin
   cb_PlaylistManagerAutoSaveUserInput.Enabled := NOT cb_PlaylistManagerAutoSave.Checked;
   // Standard-Aktionen
   GrpBox_DefaultAction.ItemIndex := NempPlaylist.DefaultAction;
+  cbApplyDefaultActionToWholeList.Checked := NempPlaylist.ApplyDefaultActionToWholeList;
+  cbUseDefaultActionOnCoverFlowDoubleClick.Checked := NempPlaylist.UseDefaultActionOnCoverFlowDoubleClick;
   GrpBox_HeadsetDefaultAction.ItemIndex := NempPlaylist.HeadSetAction;
   cb_AutoStopHeadsetSwitchTab.Checked := NempPlaylist.AutoStopHeadsetSwitchTab;
   cb_AutoStopHeadsetAddToPlayist.Checked := NempPlaylist.AutoStopHeadsetAddToPlayist;
@@ -1352,6 +1382,7 @@ begin
   EdtPasswordAdmin.Text := NempWebServer.PasswordA;
   seWebServer_Port.Value := NempWebServer.Port;
   cbPermitLibraryAccess.Checked    := NempWebServer.AllowLibraryAccess;
+  cbPermitHtmlAudio.Checked        := NempWebServer.AllowHtmlAudio;
   cbPermitPlaylistDownload.Checked := NempWebServer.AllowFileDownload;
   cbAllowRemoteControl.Checked     := NempWebServer.AllowRemoteControl;
   cbPermitVote.Checked             := NempWebServer.AllowVotes;
@@ -1507,9 +1538,12 @@ begin
   CBSkipSortOnLargeLists.Enabled := CBAlwaysSortAnzeigeList.Checked;
   CBSkipSortOnLargeLists.Checked := MedienBib.SkipSortOnLargeLists;
   cb_limitMarkerToCurrentFiles.Checked := MedienBib.limitMarkerToCurrentFiles;
-  CBShowHintsInMedialist.Checked := MedienBib.ShowHintsInMedialist;
-  CB_ShowHintsInPlaylist.Checked := NempPlaylist.ShowHintsInPlaylist;
+  CBShowHintsInTitlelists.Checked := MedienBib.ShowHintsInMedialist;
+  CB_ShowAdvancedHints.Checked := MedienBib.ShowAdvancedHints;
+  // CB_ShowHintsInPlaylist.Checked := NempPlaylist.ShowHintsInPlaylist;
   cbFullRowSelect.Checked := NempOptions.FullRowSelect;
+
+  EnableListViewControls;
 end;
 
 procedure TOptionsCompleteForm.ShowWebRadioSettings;
@@ -1556,6 +1590,13 @@ begin
   cb_ShowAutoResolveInconsistenciesHints.checked := MedienBib.ShowAutoResolveInconsistenciesHints;
   // Char code detection
   CBAutoDetectCharCode.Checked := NempCharCodeOptions.AutoDetectCodePage;
+  // CDDB-Settings
+  cbAutoCheckNewCDs.Checked := NempOptions.AutoScanNewCDs;
+  cbUseCDDB.Checked := NempOptions.UseCDDB;
+  cbPreferCDDB.checked := NempOptions.PreferCDDB;
+  edtCDDBServer.Text := NempOptions.CDDBServer;
+  edtCDDBEMail.Text := NempOptions.CDDBEMail;
+  lblInvalidCDDBMail.Visible := not ValidEmail(NempOptions.CDDBEMail);
 end;
 
 procedure TOptionsCompleteForm.ShowLastFMSettings;
@@ -1694,12 +1735,12 @@ end;
 
 
 function TOptionsCompleteForm.ValidTime(aText: String): Boolean;
-var txt_time: String;
-    h, min: Integer;
+var
+  h, min: Integer;
 begin
-    txt_time := mskEdt_BirthdayTime.Text;
-    h := StrToInt(TrimRight(Copy(txt_time, 0, 2)));
-    min := StrToInt(TrimRight(Copy(txt_time, 4, 2)));
+    //txt_time := mskEdt_BirthdayTime.Text;
+    h := StrToInt(TrimRight(Copy(aText, 0, 2)));
+    min := StrToInt(TrimRight(Copy(aText, 4, 2)));
 
     result := (min >= 0) AND (min < 60)
             AND (h >= 0) AND (h < 24);
@@ -1813,6 +1854,12 @@ begin
   LblConst_TitleFade.Enabled := CB_Fading.Checked;
   LblConst_ms1.Enabled := CB_Fading.Checked;
   LblConst_ms2.Enabled := CB_Fading.Checked;
+  cbIgnoreFadingOnLiveRecordings.Enabled := CB_Fading.Checked;
+  lblIdentifyLiveTracksBy.Enabled := CB_Fading.Checked and cbIgnoreFadingOnLiveRecordings.Checked;
+  cbLiveRecordingCheckTitle.Enabled := CB_Fading.Checked and cbIgnoreFadingOnLiveRecordings.Checked;
+  cbLiveRecordingCheckAlbum.Enabled := CB_Fading.Checked and cbIgnoreFadingOnLiveRecordings.Checked;
+  cbLiveRecordingCheckTags.Enabled := CB_Fading.Checked and cbIgnoreFadingOnLiveRecordings.Checked;
+  edtLiveRecordingCheckIdentifier.Enabled := CB_Fading.Checked and cbIgnoreFadingOnLiveRecordings.Checked;
 end;
 
 procedure TOptionsCompleteForm.CB_FadingClick(Sender: TObject);
@@ -2211,9 +2258,10 @@ end;
 
 function TOptionsCompleteForm.GetFocussedAudioFileName: UnicodeString;
 begin
-  result := '';
-  if assigned(MedienBib.CurrentAudioFile) then
-      result := MedienBib.CurrentAudioFile.Pfad;
+  // result := '';
+  // if assigned(MedienBib.CurrentAudioFile) then
+  //    result := MedienBib.CurrentAudioFile.Pfad;
+  result := Nemp_MainForm.CurrentlySelectedFile.Pfad;
 end;
 
 procedure TOptionsCompleteForm.BtnGetCountDownTitelClick(Sender: TObject);
@@ -2444,6 +2492,12 @@ begin
   NempPlayer.IgnoreFadingOnShortTracks := CB_IgnoreFadingOnShortTracks.Checked;
   NempPlayer.IgnoreFadingOnPause := CB_IgnoreFadingOnPause.Checked;
   NempPlayer.IgnoreFadingOnStop := CB_IgnoreFadingOnStop.Checked;
+  NempPlayer.IgnoreFadingOnLiveRecordings  := cbIgnoreFadingOnLiveRecordings.Checked;
+  NempPlayer.LiveRecordingCheckTitle       := cbLiveRecordingCheckTitle.Checked;
+  NempPlayer.LiveRecordingCheckAlbum       := cbLiveRecordingCheckAlbum.Checked;
+  NempPlayer.LiveRecordingCheckTags        := cbLiveRecordingCheckTags.Checked;
+  NempPlayer.LiveRecordingCheckIdentifier  := Trim(edtLiveRecordingCheckIdentifier.Text);
+
   NempPlayer.DoSilenceDetection := CB_SilenceDetection.Checked ;
   NempPlayer.SilenceThreshold   := SE_SilenceThreshold.Value   ;
   NempPlayer.DoPauseBetweenTracks       := cb_AddBreakBetweenTracks.Checked;
@@ -2495,11 +2549,12 @@ begin
   MedienBib.AlwaysSortAnzeigeList := cbAlwaysSortAnzeigeList.Checked;
   MedienBib.SkipSortOnLargeLists := CBSkipSortOnLargeLists.Checked;
   MedienBib.limitMarkerToCurrentFiles := cb_limitMarkerToCurrentFiles.Checked;
-  MedienBib.ShowHintsInMedialist := CBShowHintsInMedialist.Checked;
-  NempPlaylist.ShowHintsInPlaylist := CB_ShowHintsInPlaylist.Checked;
+  MedienBib.ShowHintsInMedialist := CBShowHintsInTitlelists.Checked;
+  MedienBib.ShowAdvancedHints := CB_ShowAdvancedHints.Checked;
+  // NempPlaylist.ShowHintsInPlaylist := CB_ShowHintsInPlaylist.Checked;
   NempOptions.FullRowSelect := cbFullRowSelect.Checked;
   Nemp_MainForm.VST.ShowHint := MedienBib.ShowHintsInMedialist;
-  Nemp_MainForm.PlaylistVST.ShowHint := NempPlaylist.ShowHintsInPlaylist;
+  Nemp_MainForm.PlaylistVST.ShowHint := MedienBib.ShowHintsInMedialist;
   if NempOptions.FullRowSelect then
     Nemp_MainForm.VST.TreeOptions.SelectionOptions := Nemp_MainForm.VST.TreeOptions.SelectionOptions + [toFullRowSelect]
   else
@@ -2661,6 +2716,7 @@ begin
   NempWebServer.Port := seWebServer_Port.Value;
   NempWebServer.AllowLibraryAccess    := cbPermitLibraryAccess.Checked;
   NempWebServer.AllowFileDownload     := cbPermitPlaylistDownload.Checked;
+  NempWebServer.AllowHtmlAudio        := cbPermitHtmlAudio.Checked;
   NempWebServer.AllowRemoteControl    := cbAllowRemoteControl.Checked;
   MedienBib.AutoActivateWebServer     := CBAutoStartWebServer.Checked;
   NempWebServer.AllowVotes            := cbPermitVote.Checked;
@@ -2671,6 +2727,8 @@ procedure TOptionsCompleteForm.ApplyPlaylistSettings;
 begin
   // default actions
   NempPlaylist.DefaultAction := GrpBox_DefaultAction.ItemIndex;
+  NempPlaylist.ApplyDefaultActionToWholeList := cbApplyDefaultActionToWholeList.Checked;
+  NempPlaylist.UseDefaultActionOnCoverFlowDoubleClick := cbUseDefaultActionOnCoverFlowDoubleClick.Checked;
   NempPlaylist.HeadSetAction := GrpBox_HeadsetDefaultAction.ItemIndex;
   NempPlaylist.AutoStopHeadsetSwitchTab := cb_AutoStopHeadsetSwitchTab.Checked;
   NempPlaylist.AutoStopHeadsetAddToPlayist := cb_AutoStopHeadsetAddToPlayist.Checked;
@@ -2766,6 +2824,13 @@ begin
   MedienBib.ShowAutoResolveInconsistenciesHints := cb_ShowAutoResolveInconsistenciesHints.checked;
   // Heuristics for charcode detections
   NempCharCodeOptions.AutoDetectCodePage := CBAutoDetectCharCode.Checked;
+  // CDDB-Settings
+  NempOptions.AutoScanNewCDs := cbAutoCheckNewCDs.Checked;
+  NempOptions.UseCDDB := cbUseCDDB.Checked;
+  NempOptions.PreferCDDB := cbPreferCDDB.checked;
+  NempOptions.CDDBServer := trim(edtCDDBServer.Text);
+  NempOptions.CDDBEMail := trim(edtCDDBEMail.Text);
+  BASS_ApplyCDDBSettings(NempOptions.CDDBServer, NempOptions.CDDBEMail);
 end;
 
 function TOptionsCompleteForm.ApplySearchSettings: Boolean;
@@ -2840,14 +2905,25 @@ begin
   LBlCountDownWarning.Visible := NOT FileExists(EditCountdownSong.Text);
 end;
 
+procedure TOptionsCompleteForm.edtCDDBEMailExit(Sender: TObject);
+begin
+  lblInvalidCDDBMail.Visible := not ValidEmail(trim(edtCDDBEMail.Text));
+end;
+
 procedure TOptionsCompleteForm.EditBirthdaySongChange(Sender: TObject);
 begin
   LblEventWarning.Visible := Not FileExists(EditBirthdaySong.Text);
 end;
 
+procedure TOptionsCompleteForm.EnableListViewControls;
+begin
+  CBSkipSortOnLargeLists.Enabled := CBAlwaysSortAnzeigeList.Checked;
+  CB_ShowAdvancedHints.Enabled := CBShowHintsInTitlelists.Checked;
+end;
+
 procedure TOptionsCompleteForm.CBAlwaysSortAnzeigeListClick(Sender: TObject);
 begin
-    CBSkipSortOnLargeLists.Enabled := CBAlwaysSortAnzeigeList.Checked;
+  EnableListViewControls;
 end;
 
 procedure TOptionsCompleteForm.EnableDirectoryScanControls;
@@ -3126,6 +3202,11 @@ begin
   finally
       fb.Free;
   end;
+end;
+
+procedure TOptionsCompleteForm.btnClearCDDBCacheClick(Sender: TObject);
+begin
+  ClearAllLocalCDDBData;
 end;
 
 procedure TOptionsCompleteForm.BtnClearCoverCacheClick(Sender: TObject);
@@ -3458,6 +3539,7 @@ begin
         // NempWebServer.OnlyLAN := cbOnlyLAN.Checked;
         NempWebServer.AllowLibraryAccess := cbPermitLibraryAccess.Checked;
         NempWebServer.AllowFileDownload := cbPermitPlaylistDownload.Checked;
+        NempWebServer.AllowHtmlAudio := cbPermitHtmlAudio.Checked;
         NempWebServer.AllowRemoteControl := cbAllowRemoteControl.Checked;
         NempWebServer.AllowVotes := cbPermitVote.Checked;
         // 2.) Medialib kopieren
@@ -3882,6 +3964,11 @@ begin
   (NempPlayer.IgnoreFadingOnShortTracks <> CB_IgnoreFadingOnShortTracks.Checked) or
   (NempPlayer.IgnoreFadingOnPause <> CB_IgnoreFadingOnPause.Checked) or
   (NempPlayer.IgnoreFadingOnStop <> CB_IgnoreFadingOnStop.Checked) or
+  (NempPlayer.IgnoreFadingOnLiveRecordings  <> cbIgnoreFadingOnLiveRecordings.Checked) or
+  (NempPlayer.LiveRecordingCheckTitle       <> cbLiveRecordingCheckTitle.Checked) or
+  (NempPlayer.LiveRecordingCheckAlbum       <> cbLiveRecordingCheckAlbum.Checked) or
+  (NempPlayer.LiveRecordingCheckTags        <> cbLiveRecordingCheckTags.Checked) or
+  (NempPlayer.LiveRecordingCheckIdentifier  <> edtLiveRecordingCheckIdentifier.Text) or
   (NempPlayer.DoSilenceDetection <> CB_SilenceDetection.Checked ) or
   (NempPlayer.SilenceThreshold   <> SE_SilenceThreshold.Value) or
   (NempPlayer.DoPauseBetweenTracks  <> cb_AddBreakBetweenTracks.Checked) or
@@ -3898,6 +3985,8 @@ function TOptionsCompleteForm.PlaylistSettingsChanged: Boolean;
 begin
   result :=
   (NempPlaylist.DefaultAction <> GrpBox_DefaultAction.ItemIndex) or
+  (NempPlaylist.ApplyDefaultActionToWholeList <> cbApplyDefaultActionToWholeList.Checked) or
+  (NempPlaylist.UseDefaultActionOnCoverFlowDoubleClick <> cbUseDefaultActionOnCoverFlowDoubleClick.Checked) or
   (NempPlaylist.HeadSetAction <> GrpBox_HeadsetDefaultAction.ItemIndex) or
   (NempPlaylist.AutoStopHeadsetSwitchTab <> cb_AutoStopHeadsetSwitchTab.Checked) or
   (NempPlaylist.AutoStopHeadsetAddToPlayist <> cb_AutoStopHeadsetAddToPlayist.Checked) or
@@ -3936,6 +4025,7 @@ begin
   (NempWebServer.Port <> seWebServer_Port.Value) or
   (NempWebServer.AllowLibraryAccess    <> cbPermitLibraryAccess.Checked) or
   (NempWebServer.AllowFileDownload     <> cbPermitPlaylistDownload.Checked) or
+  (NempWebServer.AllowHtmlAudio        <> cbPermitHtmlAudio.Checked) or
   (NempWebServer.AllowRemoteControl    <> cbAllowRemoteControl.Checked) or
   (MedienBib.AutoActivateWebServer     <> CBAutoStartWebServer.Checked) or
   (NempWebServer.AllowVotes            <> cbPermitVote.Checked);
@@ -4022,11 +4112,12 @@ begin
   (MedienBib.AlwaysSortAnzeigeList <> cbAlwaysSortAnzeigeList.Checked) or
   (MedienBib.SkipSortOnLargeLists <> CBSkipSortOnLargeLists.Checked) or
   (MedienBib.limitMarkerToCurrentFiles <> cb_limitMarkerToCurrentFiles.Checked) or
-  (MedienBib.ShowHintsInMedialist <> CBShowHintsInMedialist.Checked) or
-  (NempPlaylist.ShowHintsInPlaylist <> CB_ShowHintsInPlaylist.Checked) or
+  (MedienBib.ShowHintsInMedialist <> CBShowHintsInTitlelists.Checked) or
+  (MedienBib.ShowAdvancedHints <> CB_ShowAdvancedHints.Checked) or
+  //(NempPlaylist.ShowHintsInPlaylist <> CB_ShowHintsInPlaylist.Checked) or
   (NempOptions.FullRowSelect <> cbFullRowSelect.Checked) or
   (Nemp_MainForm.VST.ShowHint <> MedienBib.ShowHintsInMedialist) or
-  (Nemp_MainForm.PlaylistVST.ShowHint <> NempPlaylist.ShowHintsInPlaylist);
+  (Nemp_MainForm.PlaylistVST.ShowHint <> MedienBib.ShowHintsInMedialist);
 end;
 function TOptionsCompleteForm.WebRadioSettingsChanged: Boolean;
 begin
@@ -4054,7 +4145,12 @@ begin
   (MedienBib.AutoResolveInconsistencies <> cb_AutoResolveInconsistencies.checked) or
   (MedienBib.AskForAutoResolveInconsistencies <> cb_AskForAutoResolveInconsistencies.checked) or
   (MedienBib.ShowAutoResolveInconsistenciesHints <> cb_ShowAutoResolveInconsistenciesHints.checked) or
-  (NempCharCodeOptions.AutoDetectCodePage <> CBAutoDetectCharCode.Checked);
+  (NempCharCodeOptions.AutoDetectCodePage <> CBAutoDetectCharCode.Checked) or
+  (NempOptions.AutoScanNewCDs <> cbAutoCheckNewCDs.Checked) or
+  (NempOptions.UseCDDB <> cbUseCDDB.Checked) or
+  (NempOptions.PreferCDDB <> cbPreferCDDB.checked) or
+  (NempOptions.CDDBServer <> edtCDDBServer.Text) or
+  (NempOptions.CDDBEMail <> edtCDDBEMail.Text);
 end;
 function TOptionsCompleteForm.SearchSettingsChanged: Boolean;
 begin
@@ -4210,7 +4306,7 @@ begin
   nLevel := VSTSortings.GetNodeLevel(Node);
   ActionEditLayer.Enabled := nLevel > 0;
   ActionAddLayer.Enabled := rc.SpecialContent = scRegular; //NOT rc.IsDirectoryCollection;
-  ActionDeleteLayer.Enabled := (nLevel = 0) or (rc.LayerDepth > 1)
+  ActionDeleteLayer.Enabled := ((nLevel = 0) and (RootCollections.Count > 1) )or (rc.LayerDepth > 1)
 end;
 
 procedure TOptionsCompleteForm.PrepareEditLayerForm(AllowDirectory: Boolean; aConfig: TCollectionConfig);

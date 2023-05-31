@@ -68,7 +68,7 @@ uses NempMainUnit, Nemp_ConstantsAndTypes, NempAPI, Details,
     SearchTool, MMSystem, BibHelper, CloudEditor, SplitForm_Hilfsfunktionen,
     DeleteSelect, GnuGetText, MedienbibliothekClass, PlayerLog,
     PostProcessorUtils, ProgressUnit, EffectsAndEqualizer,
-    AudioDisplayUtils, System.Win.TaskbarCore;
+    AudioDisplayUtils, System.Win.TaskbarCore, cddaUtils;
 
 var NEMP_API_InfoString: Array[0..500] of AnsiChar;
     NEMP_API_InfoStringW: Array[0..500] of WideChar;
@@ -541,6 +541,14 @@ begin
 
         MB_ClearEmptyNodes: begin
           ClearEmptyCollectionNodes(AlbenVST);
+        end;
+
+        MB_ClearBrowseTrees: begin
+          ClearBrowseTrees;
+        end;
+
+        MB_ClearFilesTree: begin
+          ClearTreeView;
         end;
 
         MB_RefillTrees: begin
@@ -1056,7 +1064,7 @@ begin
                                   aMsg.Result := newAudioFile.WebServerID;
                               end;
                            end;
-        WS_PlaylistMoveUpCheck : begin  // returns a copy of the previous file in the playlist
+        (*WS_PlaylistMoveUpCheck : begin  // returns a copy of the previous file in the playlist
                               if AcceptApiCommands then
                               begin
                                   aMsg.Result := -3;   // invalid
@@ -1081,7 +1089,7 @@ begin
                                       end;
                                   end;
                               end;
-        end;
+        end;   *)
         WS_PlaylistMoveUp : begin
                               if AcceptApiCommands then
                               begin
@@ -1096,10 +1104,10 @@ begin
                                           if af.PrebookIndex > 1 then
                                           begin
                                               NempPlaylist.SetNewPrebookIndex(af, af.PrebookIndex - 1);
-                                              aMsg.Result := 1;
+                                              aMsg.Result := 2;
                                           end
                                           else
-                                              aMsg.Result := 2; // move up of the firstfile in prebooklist
+                                              aMsg.Result := 3; // move up of the first file in prebooklist, cancel
                                       end
                                       else
                                       begin
@@ -1109,12 +1117,12 @@ begin
                                                   aMsg.Result := 1;
                                           end else
                                           if idx = 0 then
-                                              aMsg.Result := 2; // move up of the first title
+                                              aMsg.Result := 3; // move up of the first title
                                       end;
                                   end;
                               end;
                            end;
-        WS_PlaylistMoveDownCheck: begin
+        (*WS_PlaylistMoveDownCheck: begin
                               if AcceptApiCommands then
                               begin
                                   aMsg.Result := -3;   // invalid
@@ -1139,7 +1147,7 @@ begin
                                       end;
                                   end;
                               end;
-        end;
+        end;*)
         WS_PlaylistMoveDown : begin
                               if AcceptApiCommands then
                               begin
@@ -1154,14 +1162,14 @@ begin
                                           if af.PrebookIndex < NempPlaylist.PrebookCount then
                                           begin
                                               NempPlaylist.SetNewPrebookIndex(af, af.PrebookIndex + 1);
-                                              aMsg.Result := 1;
+                                              aMsg.Result := 2;
                                           end
                                           else
                                           begin
                                               // move down of the last file in prebooklist
                                               // => delete from prebooklist
                                               NempPlaylist.SetNewPrebookIndex(af, 0);
-                                              aMsg.Result := 1;
+                                              aMsg.Result := 2;
                                           end;
                                       end
                                       else
@@ -1169,12 +1177,10 @@ begin
                                           if (idx > -1) and (idx < NempPlaylist.Count - 1) then
                                           begin
                                               NempPlaylist.SwapFiles(idx, idx+1);
-                                              //Playlist.Move(idx, idx+1);
-                                              //NempPlaylist.FillPlaylistView;
                                               aMsg.Result := 1;
                                           end else
                                               if idx = NempPlaylist.Count - 1 then
-                                                  aMsg.Result := 2;// move down of the last title
+                                                  aMsg.Result := 3;// move down of the last title
                                       end;
                                   end;
                               end;
@@ -1205,45 +1211,18 @@ begin
                               end;
                            end;
 
-        WS_QueryPlayer: NempWebServer.GenerateHTMLfromPlayer(NempPlayer, 0, False);
-        WS_QueryPlayerAdmin: NempWebServer.GenerateHTMLfromPlayer(NempPlayer, 0, True);
+        // player data
+        WS_QueryPlayer: NempWebServer.GenerateHTMLfromPlayer(NempPlayer, True, False);
+        WS_QueryPlayerAdmin: NempWebServer.GenerateHTMLfromPlayer(NempPlayer, True, True);
+        WS_QueryPlayerJS: NempWebServer.GenerateHTMLfromPlayer(NempPlayer, False, False);
+        WS_QueryPlayerJSAdmin: NempWebServer.GenerateHTMLfromPlayer(NempPlayer, False, True);
 
-        WS_QueryPlayerJS: begin
-                        if aMsg.LParam = 1 then
-                            NempWebServer.GenerateHTMLfromPlayer(NempPlayer, 1, False)   // 1: Controls  [[PlayerControls]]
-                        else
-                            NempWebServer.GenerateHTMLfromPlayer(NempPlayer, 2, False);  // 2: Playerdata [[ItemPlayer]]
-        end;
-        WS_QueryPlayerJSAdmin: begin
-                        if aMsg.LParam = 1 then
-                            NempWebServer.GenerateHTMLfromPlayer(NempPlayer, 1, True)   // 1: Controls  [[PlayerControls]]
-                        else
-                            NempWebServer.GenerateHTMLfromPlayer(NempPlayer, 2, True);  // 2: Playerdata [[ItemPlayer]]
-        end;
+        // playlist data
+        WS_QueryPlaylist: NempWebServer.GenerateHTMLfromPlaylist(NempPlaylist, True, False);
+        WS_QueryPlaylistAdmin: NempWebServer.GenerateHTMLfromPlaylist(NempPlaylist, True, True);
+        WS_QueryPlaylistJS: NempWebServer.GenerateHTMLfromPlaylist(NempPlaylist, False, False);
+        WS_QueryPlaylistJSAdmin: NempWebServer.GenerateHTMLfromPlaylist(NempPlaylist, False, True);
 
-        WS_QueryPlaylist: NempWebServer.GenerateHTMLfromPlaylist_View(NempPlaylist, False);
-        WS_QueryPlaylistAdmin: NempWebServer.GenerateHTMLfromPlaylist_View(NempPlaylist, True);
-
-        WS_QueryPlaylistItem: begin
-                              if aMsg.lParam = -1 then
-                                  // get ALL items
-                                  NempWebServer.GenerateHTMLfromPlaylistItem(NempPlaylist, -1, False)
-                              else
-                              begin
-                                  idx := NempPlaylist.GetPlaylistIndexByWebServerID(aMsg.LParam);
-                                  NempWebServer.GenerateHTMLfromPlaylistItem(NempPlaylist, idx, False);
-                              end;
-                          end;
-        WS_QueryPlaylistItemAdmin: begin
-                              if aMsg.lParam = -1 then
-                                  // get ALL items
-                                  NempWebServer.GenerateHTMLfromPlaylistItem(NempPlaylist, -1, True)
-                              else
-                              begin
-                                  idx := NempPlaylist.GetPlaylistIndexByWebServerID(aMsg.LParam);
-                                  NempWebServer.GenerateHTMLfromPlaylistItem(NempPlaylist, idx, True);
-                              end;
-                          end;
         WS_QueryPlaylistDetail: begin
                                 // ID aus Lparam lesen
                                 idx := NempPlaylist.GetPlaylistIndexByWebServerID(aMsg.LParam);
@@ -1502,10 +1481,25 @@ begin
   end;
 end;
 
+function GetFirstDrive(UnitMask: DWORD): Char;
+var
+  c: Char;
+begin
+  Result := #0;
+  for c := 'A' to 'Z' do begin
+    if (UnitMask and 1) = 1 then begin
+      Result := c;
+      break;
+    end;
+    UnitMask := UnitMask shr 1;
+  end;
+end;
+
 
 function Handle_WndProc(var Message: TMessage): Boolean;
-var devType: Integer;
+var DriveNo: Integer;
   Datos: PDevBroadcastHdr;
+  VolInfo: PDevBroadcastVolume;
 //  VolInfo: PDevBroadcastVolume;
 //  UnitMask: DWord;
 begin
@@ -1526,23 +1520,48 @@ begin
     end;
 
     WM_DEVICECHANGE: begin
-                      if (Message.wParam = DBT_DEVICEARRIVAL) or (Message.wParam = DBT_DEVICEREMOVECOMPLETE) then
-                      begin
-                          Datos := PDevBroadcastHdr(Message.lParam);
-                          devType := Datos^.dbch_devicetype;
+        Datos := PDevBroadcastHdr(Message.lParam);
+        case Message.wParam of
+            DBT_DeviceArrival: begin
+              if Datos^.dbch_devicetype = DBT_DevTyp_Volume then
+              begin
+                VolInfo := PDevBroadcastVolume(Message.lParam);
+                if VolInfo.dbcv_flags = DBTF_Media then begin
+                  // new Media in existing drive (= new CD/DVD. A Floppy Disk or something like that would be rather unlikely.)
+                  if NempOptions.AutoScanNewCDs then begin
+                    DriveNo := TCDDADrive.GetDriveNumber(GetFirstDrive(VolInfo.dbcv_unitmask));
+                    if (DriveNo >= 0) and (DriveNo < CDDriveList.Count)  then begin
+                      CDDriveList[DriveNo].ClearDiscInformation;
+                      CDDriveList[DriveNo].GetDiscInformation(NempOptions.UseCDDB, NempOptions.PreferCDDB);
+                      NempPlaylist.SynchFilesWithCDDrive(CDDriveList[DriveNo]);
+                    end;
+                  end;
+                end
+                else
+                  // new drive connected
+                  HandleNewConnectedDrive;
 
-                          if (devType = DBT_DEVTYP_DEVICEINTERFACE) or (devType = DBT_DEVTYP_VOLUME) then
-                          begin // USB Device
-                            if Message.wParam = DBT_DEVICEARRIVAL then
-                            begin
-                              Message.Result := 1;
-                              HandleNewConnectedDrive;
-                            end
-                            else
-                                Message.Result := 1;
-                          end;
-                      end;
+                Message.Result := 1;
+              end;
+            end;
 
+            DBT_DeviceRemoveComplete: begin
+              if Datos^.dbch_devicetype = DBT_DevTyp_Volume then
+              begin
+                VolInfo := PDevBroadcastVolume(Message.lParam);
+                if (VolInfo.dbcv_flags = DBTF_Media) and NempOptions.AutoScanNewCDs then begin
+                  // Media removed
+                  DriveNo := TCDDADrive.GetDriveNumber(GetFirstDrive(VolInfo.dbcv_unitmask));
+                  if (DriveNo >= 0) and (DriveNo < CDDriveList.Count)  then begin
+                    CDDriveList[DriveNo].ClearDiscInformation;
+                    CDDriveList[DriveNo].GetDiscInformation(NempOptions.UseCDDB, NempOptions.PreferCDDB);
+                    NempPlaylist.SynchFilesWithCDDrive(CDDriveList[DriveNo]);
+                  end;
+                end;
+                Message.Result := 1;
+              end;
+            end;
+        end;
     end;
 
 
@@ -1589,6 +1608,10 @@ begin
                           end;
                       end;
                  end;
+    WM_PlayerPlayAgain: begin
+      NempPlaylist.AcceptInput := True;
+      NempPlaylist.PlayAgain;
+    end;
 
     WM_PrepareNextFile: begin
                       NempPlaylist.AcceptInput := True;
@@ -1709,16 +1732,36 @@ begin
                             end;
     end;
 
-    WM_NewMetaData: begin
-                        Application.Title := NempPlayer.GenerateTaskbarTitel;
-                        NempTrayIcon.Hint := StringReplace(NempPlaylist.PlayingFile.Titel, '&', '&&&', [rfReplaceAll]);
-                        PlaylistVST.Invalidate;
-                        PlaylistCueChanged(NempPlaylist);
+    //WM_NewMetaData
+    WM_WebRadio: begin
+                    case Message.wParam of
+                      wWebRadioNewMetaData,
+                      wWebRadioNewMetaDataOgg: begin
+                          if NempPlayer.ProcessNewMetaData((Message.wParam), Message.lParam) then begin
+                            Application.Title := NempPlayer.GenerateTaskbarTitel;
+                            NempTrayIcon.Hint := StringReplace(NempPlaylist.PlayingFile.Titel, '&', '&&&', [rfReplaceAll]);
+                            PlaylistVST.Invalidate;
+                            PlaylistCueChanged(NempPlaylist);
+                          end;
+                      end; // new Metadata
+
+                      wWebRadioBuffering: begin
+                          if NempPlayer.FinishBuffering then begin
+                            PlaylistCueChanged(NempPlaylist);
+                            RecordBtn.Enabled := assigned(NempPlayer.MainAudioFile)
+                                         and NempPlayer.MainAudioFile.isStream
+                                         and (NempPlayer.BassStatus = BASS_ACTIVE_PLAYING)
+                                         and (NempPlayer.StreamType <> 'Ogg');
+                          end
+                          else
+                            // monitor buffering progress
+                            PlayerArtistLabel.Caption := 'Buffering ' + NempPlayer.GetBufferProgress.ToString + '%';
+                      end;
                     end;
+    end;
 
     WM_PlayerStop, WM_PlayerPlay: begin
-                                    BassTimer.Enabled := //NempPlayer.BassStatus = BASS_ACTIVE_PLAYING;
-                                                         NempPlayer.Status = PLAYER_ISPLAYING;
+                                    BassTimer.Enabled := NempPlayer.Status = PLAYER_ISPLAYING;
 
                                     RecordBtn.Enabled := assigned(NempPlayer.MainAudioFile)
                                          and NempPlayer.MainAudioFile.isStream
@@ -1798,6 +1841,7 @@ Var
   PlayIdx: Integer;
 Begin
     result := True;
+    MarkCDDriveDataAsDeprecated;
 
     // Größe der Playlist und Status des Players merken
     // abspielen := NempPlaylist.Count = 0;
@@ -2033,14 +2077,14 @@ begin
                 BibFile := MedienBib.GetAudioFileWithFilename(NewFile);
                 if not assigned(BibFile) then begin
                   AudioFile := TAudioFile.Create;
-                  if MedienBib.UseNewFileScanMethod then
-                    AudioFile.Pfad := NewFile
-                  else begin
+                  {if MedienBib.UseNewFileScanMethod then}
+                  AudioFile.Pfad := NewFile;
+                  {else begin
                       aErr := AudioFile.GetAudioData(NewFile, GAD_Rating or MedienBib.IgnoreLyricsFlag);
                       AudioFile.Category := MedienBib.NewCategoryMask;
                       HandleError(afa_NewFile, AudioFile, aErr);
                       MedienBib.CoverArtSearcher.InitCover(AudioFile, tm_VCL, INIT_COVER_DEFAULT);
-                  end;
+                  end;}
                   MedienBib.UpdateList.Add(AudioFile);
                 end
                 else begin
@@ -2114,16 +2158,16 @@ begin
                 else
                 begin
                     // Dateisuche fertig. Starte Updatekram
-                    if MedienBib.UseNewFileScanMethod then
-                    begin
-                        // new files has to be scanned first
-                        MedienBib.ScanNewFilesAndUpdateBib;
-                    end else
+                    {if MedienBib.UseNewFileScanMethod then
+                    begin}
+                    // new files has to be scanned first
+                    MedienBib.ScanNewFilesAndUpdateBib;
+                    {end else
                     begin
                         // old method. Files are already scanned and ready to be merged into the Media Library
                         MedienBib.NewFilesUpdateBib;
                         NempTaskbarManager.ProgressState := TTaskBarProgressState.None;
-                    end;
+                    end;}
                 end;
           end;
         end;

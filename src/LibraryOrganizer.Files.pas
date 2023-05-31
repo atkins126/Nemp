@@ -115,6 +115,7 @@ type
 
       fValidArtist: Boolean;
       fValidAlbum: Boolean;
+      fDuration: int64;
 
       function isCloud: Boolean;
 
@@ -154,7 +155,8 @@ type
       function GetCategoryCaption: String;
       function GetCoverID: String; override;
 
-      function HasUniqueValue(aCollection: TAudioFileCollection): teCollectionUniqueness;
+      class function HasUniqueValue(aCollection: TAudioFileCollection): teCollectionUniqueness;
+      function CalculateFileDuration: Int64;
       procedure GetCommonArtist;
       procedure GetCommonGenre;
       procedure GetCommonYear;
@@ -182,6 +184,7 @@ type
       // The "Valid" properties should only be called directly after a call of "Analyse"
       property ValidArtist: Boolean read fValidArtist;
       property ValidAlbum: Boolean  read fValidAlbum;
+      property Duration: int64 read fDuration write fDuration;
 
       // CategoryCaption: Used for the TagCloud. The RootCollection should show the Category there
       property CategoryCaption: String read GetCategoryCaption;
@@ -249,6 +252,7 @@ type
       // After inserting all Files into a collection, we may want to analyze these files and collect further data
       // for example, when sorting by Album, we may want addtional common information like "year", "genre", "artist"
 
+      class function CommonCoverID(AudioFiles: TAudioFileList): String;
   end;
 
 
@@ -837,6 +841,14 @@ begin
   result := fCoverID;
 end;
 
+function TAudioFileCollection.CalculateFileDuration: Int64;
+var
+  i: Integer;
+begin
+  result := 0;
+  for i := 0 to fFileList.Count - 1 do
+    result := result + fFileList[i].Duration;
+end;
 
 procedure TAudioFileCollection.GetCommonArtist;
 var
@@ -917,7 +929,7 @@ begin
   end;
 end;
 
-function TAudioFileCollection.HasUniqueValue(aCollection: TAudioFileCollection): teCollectionUniqueness;
+class function TAudioFileCollection.HasUniqueValue(aCollection: TAudioFileCollection): teCollectionUniqueness;
 var
   FileCount: Integer;
 begin
@@ -941,6 +953,11 @@ begin
 end;
 
 procedure TAudioFileCollection.GetCommonCoverID;
+begin
+  fCoverID := CommonCoverID(fFileList);
+end;
+
+class function TAudioFileCollection.CommonCoverID(AudioFiles: TAudioFileList): String;
 var
   i: Integer;
   aRoot: TRootCollection;
@@ -949,14 +966,19 @@ begin
   aRoot := TRootCollection.Create(nil);
   try
     aRoot.AddSubCollectionType(ccCoverID, csCount, sd_Descending);
-    for i := 0 to fFileList.Count - 1 do
-      aRoot.AddAudioFile(fFileList[i]);
+    for i := 0 to AudioFiles.Count - 1 do
+      aRoot.AddAudioFile(AudioFiles[i]);
     aRoot.Sort(False);
-    fCoverID := TAudioFileCollection(aRoot.Collection[0]).fCoverID;
 
-    if fCoverID= '' then
-      fCoverID := IntToStr(aRoot.CollectionCount);
-
+    case HasUniqueValue(aRoot) of
+      cuUnique: Result := TAudioFileCollection(aRoot.Collection[0]).fCoverID;
+    else
+      //cuInvalid, cuSampler
+       Result := ''; //TAudioFileCollection(aRoot.Collection[0]).fCoverID;
+    end;
+    //fCoverID := TAudioFileCollection(aRoot.Collection[0]).fCoverID;
+    //if fCoverID= '' then
+    //  fCoverID := IntToStr(aRoot.CollectionCount); ????? Why ?????
   finally
     aRoot.Free;
   end;
@@ -1060,12 +1082,17 @@ procedure TAudioFileCollection.Analyse(recursive, ForceAnalysis: Boolean);
 var
   i: Integer;
 begin
+  fDuration := 0;
   if recursive then
-    for i := 0 to fCollectionList.Count - 1 do
+    for i := 0 to fCollectionList.Count - 1 do begin
       fCollectionList[i].Analyse(recursive, ForceAnalysis);
+      fDuration := fDuration + fCollectionList[i].fDuration;
+    end;
 
   if (fFileList.Count = 0) or (not fNeedAnalysis) then
     exit; // nothing more to do in that case
+
+  fDuration := fDuration + CalculateFileDuration;
 
   if ForceAnalysis then begin
     GetCommonArtist;

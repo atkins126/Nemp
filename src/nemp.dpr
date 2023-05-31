@@ -6,6 +6,8 @@ program nemp;
 
 {$I xe.inc}
 
+{$R *.dres}
+
 uses
   madExcept,
   madLinkDisAsm,
@@ -139,7 +141,11 @@ uses
   ReplayGain in '3rd Party Units\ReplayGain.pas',
   MainFormLayout in 'MainFormLayout.pas',
   NempHelp in 'NempHelp.pas',
-  fConfigErrorDlg in 'fConfigErrorDlg.pas' {ConfigErrorDlg};
+  fConfigErrorDlg in 'fConfigErrorDlg.pas' {ConfigErrorDlg},
+  AudioExportUtils in 'AudioExportUtils.pas',
+  fExport in 'fExport.pas' {FormExport},
+  UpdateCleaning in 'UpdateCleaning.pas',
+  fUpdateCleaning in 'fUpdateCleaning.pas' {FormUpdateCleaning};
 
 {$R *.res}
 

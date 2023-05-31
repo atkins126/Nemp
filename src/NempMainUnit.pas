@@ -720,6 +720,14 @@ type
     actShowControlCover: TAction;
     Showcoverinconrtolpanel1: TMenuItem;
     Showcoverinconrtolpanel2: TMenuItem;
+    MM_H_HelpOnline: TMenuItem;
+    MM_ML_RefreshPlaylists: TMenuItem;
+    PM_ML_CollectionShowPlaylistInExplorer: TMenuItem;
+    pm_TagShowInExplorer: TMenuItem;
+    PM_ML_ApplyDefaultActionToWholeList: TMenuItem;
+    PM_P_OnlineHelp: TMenuItem;
+    MM_H_CleanupUpdate: TMenuItem;
+    PM_P_CleanupUpdate: TMenuItem;
 
     procedure FormCreate(Sender: TObject);
 
@@ -749,6 +757,7 @@ type
     function GenerateSortedListFromCoverFlow(dest: TAudioFileList; CreateFileCopies: Boolean): Boolean;
     function GenerateSortedListFromTagCloud(dest: TAudioFileList; CreateFileCopies: Boolean): Boolean;
     function GenerateSortedListFromFileView(dest: TAudioFileList; CreateFileCopies: Boolean): Boolean;
+    function CopyAudioFileList(Source, Dest: TAudioFileList): Boolean;
 
     procedure PM_ML_CollectionPlayEnqueueClick(Sender: TObject);
     function GetFocussedAudioFile:TAudioFile;
@@ -918,7 +927,7 @@ type
     procedure DoFastSearch(aString: UnicodeString; AllowErr: Boolean = False);
     procedure DoFastIPCSearch(aString: UnicodeString);
 
-    procedure PlaylistVSTGetHint(Sender: TBaseVirtualTree;
+    procedure TitlesVSTGetHint(Sender: TBaseVirtualTree;
       Node: PVirtualNode; Column: TColumnIndex;
       var LineBreakStyle: TVTTooltipLineBreakStyle;
       var HintText: String);
@@ -1330,7 +1339,6 @@ type
     procedure TreesRenderOLEData(Sender: TBaseVirtualTree;
       const FormatEtcIn: tagFORMATETC; out Medium: tagSTGMEDIUM;
       ForClipboard: Boolean; var Result: HRESULT);
-    procedure PanelCoverBrowseEndDrag(Sender, Target: TObject; X, Y: Integer);
     procedure LibraryVSTEndDrag(Sender, Target: TObject; X, Y: Integer);
     procedure VSTDragAllowed(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Column: TColumnIndex; var Allowed: Boolean);
@@ -1378,6 +1386,19 @@ type
     procedure PM_ML_ShowWebradioCategoryClick(Sender: TObject);
     procedure PM_ML_ClearCategoryClick(Sender: TObject);
     procedure actShowControlCoverExecute(Sender: TObject);
+    procedure MM_H_HelpOnlineClick(Sender: TObject);
+    procedure MM_ML_RefreshPlaylistsClick(Sender: TObject);
+    procedure PM_ML_CollectionShowPlaylistInExplorerClick(Sender: TObject);
+    procedure pm_TagShowInExplorerClick(Sender: TObject);
+    procedure PM_ML_ApplyDefaultActionToWholeListClick(Sender: TObject);
+    procedure TitlesVSTDrawHint(Sender: TBaseVirtualTree; HintCanvas: TCanvas;
+      Node: PVirtualNode; R: TRect; Column: TColumnIndex);
+    procedure TitlesVSTGetHintKind(Sender: TBaseVirtualTree;
+      Node: PVirtualNode; Column: TColumnIndex; var Kind: TVTHintKind);
+    procedure TitlesVSTGetHintSize(Sender: TBaseVirtualTree;
+      Node: PVirtualNode; Column: TColumnIndex; var R: TRect);
+    procedure MM_H_CleanupUpdateClick(Sender: TObject);
+    procedure MM_HelpClick(Sender: TObject);
 
   private
     { Private declarations }
@@ -1389,6 +1410,7 @@ type
     ResizeFlag: Cardinal;
 
     CurrentTagToChange: String;
+    fCurrentlySelectedFile: TAudioFile;
 
     PaintFrameDownX: Integer;
     PaintFrameDownY: Integer;
@@ -1420,6 +1442,9 @@ type
     procedure PlaylistScrollToPlayingFile;
     procedure PlaylistSelectAllSearchresults;
 
+    function GetCurrentlySelectedFile: TAudioFile;
+    procedure SetCurrentlySelectedFile(Value: TAudioFile);
+
     procedure RefreshSubForm(aForm: TNempSubForm; IsVisible: Boolean);
     procedure InitTaskBarIcons;
 
@@ -1435,6 +1460,8 @@ type
         detailedInternalDrop: Boolean; var Effect: Integer; var Accept: Boolean; var HintStr: String);
 
     procedure SearchDirectoryForNewFiles(TargetCategory: TLibraryCategory);
+
+    procedure CDDBConsistencyCheck(af: TAudioFile);
 
   public
     { Public declarations }
@@ -1485,11 +1512,13 @@ type
     MainPlayerControlsActive: Boolean;
     AlphaBlendBMP: TBitmap;
     BibRatingHelper: TRatingHelper;
-    TagLabelList: TObjectList;
+    TagLabelList: TComponentList;
 
     // reference to AB1 and AB2, needed for assigning the correct graphics
     ABRepeatStartImg, ABRepeatEndImg: TImage;
     Resizing: Boolean;
+
+    property CurrentlySelectedFile: TAudioFile read GetCurrentlySelectedFile write SetCurrentlySelectedFile;
 
     procedure MinimizeNemp(Sender: TObject);
     procedure DeactivateNemp(Sender: TObject);
@@ -1503,12 +1532,16 @@ type
     procedure RefreshCurrentSearchDirPlayist(Sender: TObject);
     procedure RefreshCurrentSearchDirMediaLibrary(Sender: TObject);
     procedure ReInitTaskbarManager(TryAgainOnException: Boolean);
-    procedure PlayEnqueue(aCollection: TAudioCollection; EnqueueMode: Integer); overload;
-    procedure PlayEnqueue(aList: TAudioFileList; EnqueueMode: Integer); overload;
+    procedure ConfirmPlaylistClearing(InsertCount: Integer; var EnqueueMode: Integer);
+    procedure PlayEnqueue(aCollection: TAudioCollection; EnqueueMode: Integer);
+    procedure PlayEnqueueFromView(EnqueueMode: Integer);
+    procedure DirectPlayFocusedFile;
+    procedure TogglePlayPause(WantDialog: Boolean);
     procedure CoverFlowCategoryMenuItemClick(Sender: TObject);
     function GetFocussedCategory: TLibraryCategory;
     function GetFocussedCollection: TAudioCollection;
     procedure ReFillBrowseTrees(RemarkOldNodes: LongBool);
+    procedure ClearBrowseTrees;
     procedure ReFillCategoryMenu;
     procedure ReFillCategoryTree(RemarkOldNodes: LongBool);
     procedure RefreshCollectionTreeHeader(Source: TLibraryCategory);
@@ -1606,7 +1639,7 @@ uses   Splash, About, OptionsComplete, StreamVerwaltung,
   CDOpenDialogs, WebServerLog, Lowbattery, ProgressUnit, EffectsAndEqualizer,
   MainFormBuilderForm, ReplayGainProgress, NempReplayGainCalculation,
   NewFavoritePlaylist, PlaylistManagement, PlaylistEditor, AudioDisplayUtils ,
-  fChangeFileCategory;
+  fChangeFileCategory, fExport, fUpdateCleaning, UpdateCleaning;
 
 
 {$R *.dfm}
@@ -1876,8 +1909,16 @@ procedure TNemp_MainForm.OwnMessageProc(var msg: TMessage);
 begin
     if NempIsClosing then
         msg.Result := 0
-    else
+    else begin
+      // Broadcast-Messages like WM_POWER and WM_DEVICECHANGE are sent to every window, i.e. to the MainForm as well.
+      // We should not send this message to the current MainForm-Handle again
+      case Msg.Msg of
+        WM_POWERBROADCAST,
+        WM_DEVICECHANGE: msg.Result := 0;
+      else
         msg.Result := sendmessage(self.Handle, msg.Msg, msg.WParam, msg.LParam);
+      end;
+    end;
 end;
 
 
@@ -1886,8 +1927,7 @@ begin
     FormReadyAndActivated := false;
 
     FOwnMessageHandler := AllocateHWND( OwnMessageProc );
-    TagLabelList := TObjectList.Create(True);
-
+    TagLabelList := TComponentList.Create(True);
 
     ABRepeatStartImg := ab1;
     ABRepeatEndImg   := ab2;
@@ -1997,6 +2037,8 @@ begin
     begin
         ID      := ST_ID_Medialist;
         Recurse := True;
+        ListFiles := False;
+        ListDirs := False;
         MHandle := FOwnMessageHandler;
         MCurrentDir := mkNoneMessage;
         MFound      := mkSendMessage;
@@ -2005,6 +2047,8 @@ begin
     begin
         ID      := ST_ID_Playlist;
         Recurse := True;
+        ListFiles := False;
+        ListDirs := False;
         MHandle := FOwnMessageHandler;
         MCurrentDir := mkNoneMessage;
         MFound      := mkSendMessage;
@@ -2068,6 +2112,8 @@ begin
     NempLayout.MainContainer   := __MainContainerPanel;
     NempLayout.OnAfterBuild := AfterLayoutBuild;
 
+    fCurrentlySelectedFile := TAudioFile.Create;
+    fCurrentlySelectedFile.AudioType := at_File;
     // Create Player
     NempPlayer            := TNempPlayer.Create(FOwnMessageHandler);
     NempPlayer.Statusproc := StatusProc;
@@ -2392,6 +2438,8 @@ begin
         ST_Playlist.Free;
         ST_Medienliste.Free;
         TagLabelList.Clear;
+
+        FreeAndNil(NempLayout);
 
         Set8087CW(Default8087CW);
     except
@@ -2917,8 +2965,8 @@ begin
           case aMSG.WParam of
 
           NEMP_BUTTON_PREVTITLE : PlayPrevBTNIMGClick(Nil);
-          NEMP_BUTTON_PLAY      : PlayPauseBTNIMGClick(Nil);
-          NEMP_BUTTON_PAUSE     : PlayPauseBTNIMGClick(Nil);
+          NEMP_BUTTON_PLAY      : TogglePlayPause(aMSg.LParam <> WM_WebServer); //PlayPauseBTNIMGClick(Nil);
+          NEMP_BUTTON_PAUSE     : TogglePlayPause(aMSg.LParam <> WM_WebServer); //PlayPauseBTNIMGClick(Nil);
           NEMP_BUTTON_STOP      : StopBTNIMGClick(Nil);
           NEMP_BUTTON_NEXTTITLE : PlayNextBTNIMGClick(NIL);
           //COMMAND_RESTORE       : if MinimizedIndicator then RestoreNemp else application.Minimize;
@@ -3884,11 +3932,32 @@ begin
   end;
 end;
 
+function TNemp_MainForm.CopyAudioFileList(Source, Dest: TAudioFileList): Boolean;
+var
+  i: Integer;
+begin
+  result := True;
+  for i := 0 to Source.Count - 1 do
+    Source[i].AddCopyToList(Dest)
+end;
+
 {
 Für Nemp 5.0 wird eine weitere Enqueue-Aktion benötigt:
 1x für Browse-Liste (später = mit Coverflow + TagCloud, weil alles AudioCollection sein werden)
 1x für den VST unten
 }
+
+
+procedure TNemp_MainForm.ConfirmPlaylistClearing(InsertCount: Integer; var EnqueueMode: Integer);
+begin
+  if (EnqueueMode = PLAYER_PLAY_FILES) and (NempPlaylist.Count > 20) and (InsertCount < 5) then begin
+    // Ask the user, whether the current playlist should be cleared
+    if TranslateMessageDLG(Format((Playlist_QueryReallyDelete), [NempPlaylist.Count, InsertCount]), mtWarning, [mbYes, mbNo], 0) = mrYes then
+      EnqueueMode := PLAYER_PLAY_FILES
+    else
+      EnqueueMode := PLAYER_ENQUEUE_FILES;
+  end;
+end;
 
 procedure TNemp_MainForm.PlayEnqueue(aCollection: TAudioCollection; EnqueueMode: Integer);
 var
@@ -3912,15 +3981,7 @@ begin
     else
       acCount := 0;
     end;
-
-    if (EnqueueMode = PLAYER_PLAY_FILES) and (NempPlaylist.Count > 20) and (acCount < 5) then
-    begin
-      // Ask the user, whether the current playlist should be cleared
-      if TranslateMessageDLG(Format((Playlist_QueryReallyDelete), [NempPlaylist.Count, acCount]), mtWarning, [mbYes, mbNo], 0) = mrYes then
-        EnqueueMode := PLAYER_PLAY_FILES
-      else
-        EnqueueMode := PLAYER_ENQUEUE_FILES;
-    end;
+    ConfirmPlaylistClearing(acCount, EnqueueMode);
 
     case aCollection.CollectionClass of
       ccFiles,
@@ -3935,17 +3996,47 @@ begin
   end;
 end;
 
-procedure TNemp_MainForm.PlayEnqueue(aList: TAudioFileList; EnqueueMode: Integer);
+procedure TNemp_MainForm.PlayEnqueueFromView(EnqueueMode: Integer);
+var
+  FileList: TAudioFileList;
+  Proceed: Boolean;
 begin
-  if (EnqueueMode = PLAYER_PLAY_FILES) and (NempPlaylist.Count > 20) and (aList.Count < 5) then
-  begin
-    // Ask the user, whether the current playlist should be cleared
-    if TranslateMessageDLG(Format((Playlist_QueryReallyDelete), [NempPlaylist.Count, aList.Count]), mtWarning, [mbYes, mbNo], 0) = mrYes then
-      EnqueueMode := PLAYER_PLAY_FILES
-    else
-      EnqueueMode := PLAYER_ENQUEUE_FILES;
+  FileList := TAudioFileList.Create(False);
+  try
+    Proceed := True;
+    if not NempPlaylist.ApplyDefaultActionToWholeList then
+      GenerateSortedListFromFileView(FileList, True)
+    else begin
+      if MedienBib.AnzeigeListe.Count <= 1000 then
+        CopyAudioFileList(MedienBib.AnzeigeListe, FileList)
+      else begin
+        case TranslateMessageDLG(Format((Playlist_QueryTooManyFiles), [MedienBib.AnzeigeListe.Count]), mtConfirmation, [MBYes, MBNo, MBCancel], 0) of
+          mrYes: CopyAudioFileList(MedienBib.AnzeigeListe, FileList);
+          mrNo: GenerateSortedListFromFileView(FileList, True);
+        else
+          Proceed := False; // Cancel the operation, do not add files at all to the playlist
+        end;
+      end
+    end;
+
+    if Proceed then begin
+      ConfirmPlaylistClearing(FileList.Count, EnqueueMode);
+      HandleFiles(FileList, EnqueueMode);
+    end;
+  finally
+    FileList.Free;
   end;
-  HandleFiles(aList, EnqueueMode);
+end;
+
+procedure TNemp_MainForm.DirectPlayFocusedFile;
+var
+  af: TAudioFile;
+begin
+  if assigned(VST.FocusedNode) then begin
+    af := VST.GetNodeData<TAudioFile>(VST.FocusedNode);
+    if assigned(af) and FileExists(af.Pfad) then
+      NempPlaylist.PlayBibFile(af, NempPlayer.FadingInterval);
+  end;
 end;
 
 procedure TNemp_MainForm.PM_ML_CollectionPlayEnqueueClick(Sender: TObject);
@@ -3956,45 +4047,47 @@ begin
   PlayEnqueue(ac, (Sender as TMenuItem).Tag);
 end;
 
-procedure TNemp_MainForm.PM_ML_ConfigureMedialibraryClick(Sender: TObject);
-begin
-//  if not assigned(FormLibraryConfiguration) then
-//    Application.CreateForm(TFormLibraryConfiguration, FormLibraryConfiguration);
-//  FormLibraryConfiguration.Show;
-
-
-    if Not Assigned(OptionsCompleteForm) then
-      Application.CreateForm(TOptionsCompleteForm, OptionsCompleteForm);
-    OptionsCompleteForm.OptionsVST.FocusedNode := OptionsCompleteForm.CategoriesNode;
-    OptionsCompleteForm.OptionsVST.Selected[OptionsCompleteForm.CategoriesNode] := True;
-    OptionsCompleteForm.PageControl1.ActivePage := OptionsCompleteForm.tabCategories;
-    OptionsCompleteForm.Show;
-end;
-
-procedure TNemp_MainForm.PM_ML_FilesPlayEnqueueClick(Sender: TObject);
+procedure TNemp_MainForm.PM_ML_CollectionShowPlaylistInExplorerClick(
+  Sender: TObject);
 var
-  FileList: TAudioFileList;
+  ac: TAudioCollection;
+  FilePath: String;
 begin
-  FileList := TAudioFileList.Create(False);
-  try
-    GenerateSortedListFromFileView(FileList, True);
-    PlayEnqueue(FileList, (Sender as TMenuItem).Tag );
-  finally
-    FileList.Free;
+  ac := GetSelectedCollectionFromMainWindow;
+  if assigned(ac) and (ac.CollectionClass = ccPlaylists) then begin
+    FilePath := TAudioPlaylistCollection(ac).LibraryPlaylist.Path;
+    if FileExists(FilePath) then
+      ShellExecute(Handle, 'open' ,'explorer.exe',
+            PChar('/e,/select,"' + FilePath+'"'), '', sw_ShowNormal)
+    else
+      TranslateMessageDLG(Format(PlaylistManager_BibPlaylistNoFound, [FilePath]), mtWarning, [MBOK], 0)
   end;
 end;
 
-procedure TNemp_MainForm.PM_ML_FilesPlayNowClick(Sender: TObject);
-var OldNode: PVirtualNode;
-    af: TAudioFile;
+procedure TNemp_MainForm.PM_ML_ConfigureMedialibraryClick(Sender: TObject);
 begin
-    OldNode := VST.FocusedNode;
-    if assigned(OldNode) then
-        af := VST.GetNodeData<TAudioFile>(OldNode)
-    else
-        af := NIL;
-    if assigned(af) and FileExists(af.Pfad) then
-        NempPlaylist.PlayBibFile(af, NempPlayer.FadingInterval);
+  if Not Assigned(OptionsCompleteForm) then
+    Application.CreateForm(TOptionsCompleteForm, OptionsCompleteForm);
+  OptionsCompleteForm.OptionsVST.FocusedNode := OptionsCompleteForm.CategoriesNode;
+  OptionsCompleteForm.OptionsVST.Selected[OptionsCompleteForm.CategoriesNode] := True;
+  OptionsCompleteForm.PageControl1.ActivePage := OptionsCompleteForm.tabCategories;
+  OptionsCompleteForm.Show;
+end;
+
+procedure TNemp_MainForm.PM_ML_FilesPlayEnqueueClick(Sender: TObject);
+begin
+  PlayEnqueueFromView((Sender as TMenuItem).Tag);
+end;
+
+procedure TNemp_MainForm.PM_ML_FilesPlayNowClick(Sender: TObject);
+begin
+  DirectPlayFocusedFile;
+end;
+
+procedure TNemp_MainForm.PM_ML_ApplyDefaultActionToWholeListClick(
+  Sender: TObject);
+begin
+  NempPlaylist.ApplyDefaultActionToWholeList := not NempPlaylist.ApplyDefaultActionToWholeList;
 end;
 
 
@@ -4030,6 +4123,7 @@ begin
     MM_ML_Delete      .Enabled := LibraryIsIdle AND LibraryNotBlockedByPartymode;
 
     MM_ML_RefreshAll         .Enabled := LibraryIsIdle AND LibraryNotBlockedByPartymode;
+    MM_ML_RefreshPlaylists   .Enabled := LibraryIsIdle AND LibraryNotBlockedByPartymode;
     MM_ML_DeleteMissingFiles .Enabled := LibraryIsIdle AND LibraryNotBlockedByPartymode;
 
     MM_T_CloudEditor         .Enabled := LibraryIsIdle AND LibraryNotBlockedByPartymode;
@@ -4175,6 +4269,8 @@ begin
         end;
     end;
     PM_ML_EnqueueBrowse.Caption := enqueueCaption;
+
+    PM_ML_CollectionShowPlaylistInExplorer.Visible := LibraryNotBlockedByPartymode and (ac.CollectionClass = ccPlaylists);
 
     isSortable := assigned(lc) and (MedienBib.BrowseMode <> 2);
     PM_ML_SortLayerBy.Visible := isSortable and (lc.CategoryType = ccFiles);
@@ -4346,6 +4442,8 @@ begin
     PM_ML_Enqueue .Default := NempPlaylist.DefaultAction = 0;
     PM_ML_PlayNext.Default := NempPlaylist.DefaultAction = 2;
     PM_ML_PlayNow .Default := NempPlaylist.DefaultAction = 3;
+
+    PM_ML_ApplyDefaultActionToWholeList.Checked := NempPlaylist.ApplyDefaultActionToWholeList;
 
     // Sorting
     PM_ML_SortBy.Enabled := LibraryNotCritical;
@@ -4623,20 +4721,17 @@ end;
 
 procedure TNemp_MainForm.PM_ML_ShowInExplorerClick(Sender: TObject);
 var
-    datei_ordner: UnicodeString;
-    Node: PVirtualNode;
-    af: TAudioFile;
+  Node: PVirtualNode;
+  af: TAudioFile;
 begin
-    Node:=VST.FocusedNode;
-    if not Assigned(Node) then
-        Exit;
+  Node:=VST.FocusedNode;
+  if not Assigned(Node) then
+    Exit;
 
-    af := VST.GetNodeData<TAudioFile>(Node);
-    datei_ordner := af.Ordner;
-
-    if DirectoryExists(datei_ordner) then
-        ShellExecute(Handle, 'open' ,'explorer.exe'
-                      , PChar('/e,/select,"' + af.Pfad+'"'), '', sw_ShowNormal);
+  af := VST.GetNodeData<TAudioFile>(Node);
+  if DirectoryExists(af.Ordner) then
+    ShellExecute(Handle, 'open' ,'explorer.exe',
+          PChar('/e,/select,"' + af.Pfad+'"'), '', sw_ShowNormal);
 end;
 
 
@@ -4715,11 +4810,10 @@ end;
 
 
 procedure TNemp_MainForm.ShowHelp;
-var ProperHelpFile: String;
+//var ProperHelpFile: String;
 begin
   Application.HelpContext(HELP_Nemp_Main);
-  exit;
-
+  (*
     //if (NempOptions.Language = 'de') then
     if (LeftStr(NempOptions.Language,2) = 'de') then
     begin
@@ -4737,6 +4831,7 @@ begin
         TranslateMessageDLG((Error_HelpFileNotFound), mtError, [mbOK], 0)
     else
         ShellExecute(Handle, 'open', PChar(ProperHelpFile), nil, nil, SW_SHOWNORMAl);
+    *)
 end;
 
 procedure TNemp_MainForm.ToolButton7Click(Sender: TObject);
@@ -4744,6 +4839,13 @@ begin
     ShowHelp;
 end;
 
+procedure TNemp_MainForm.MM_H_HelpOnlineClick(Sender: TObject);
+begin
+  if AnsiStartsText('de', NempOptions.Language) then
+    ShellExecute(Handle, 'open', PChar(NEMP_ONLINE_HELP_DE), nil, nil, SW_SHOW)
+  else
+    ShellExecute(Handle, 'open', PChar(NEMP_ONLINE_HELP_EN), nil, nil, SW_SHOW)
+end;
 
 procedure TNemp_MainForm.MM_ML_RefreshAllClick(Sender: TObject);
 begin
@@ -4756,6 +4858,18 @@ begin
         exit;
     end;
     MedienBib.RefreshFiles_All;
+end;
+
+procedure TNemp_MainForm.MM_ML_RefreshPlaylistsClick(Sender: TObject);
+begin
+  if NempSkin.NempPartyMode.DoBlockBibOperations then
+    exit;
+
+  if MedienBib.StatusBibUpdate <> 0 then begin
+    TranslateMessageDLG((Warning_MedienBibIsBusy), mtWarning, [MBOK], 0);
+    exit;
+  end;
+  MedienBib.RefreshPlaylists;
 end;
 
 procedure TNemp_MainForm.PM_ML_RefreshSelectedClick(Sender: TObject);
@@ -4937,13 +5051,11 @@ end;
 procedure TNemp_MainForm.VSTColumnDblClick(Sender: TBaseVirtualTree;
   Column: TColumnIndex; Shift: TShiftState);
 begin
-  // MediaListPopupTag := 3;
-
   case NempPlaylist.DefaultAction of
-      PLAYER_ENQUEUE_FILES: PM_ML_Enqueue.Click  ;
-      PLAYER_PLAY_FILES   : PM_ML_Play.Click     ;
-      PLAYER_PLAY_NEXT    : PM_ML_PlayNext.Click ;
-      PLAYER_PLAY_NOW     : PM_ML_PlayNow.Click  ;
+    PLAYER_ENQUEUE_FILES: PlayEnqueueFromView(PM_ML_Enqueue.Tag);
+    PLAYER_PLAY_FILES   : PlayEnqueueFromView(PM_ML_Play.Tag);
+    PLAYER_PLAY_NEXT    : PlayEnqueueFromView(PM_ML_PlayNext.Tag);
+    PLAYER_PLAY_NOW     : DirectPlayFocusedFile;
   end;
 end;
 
@@ -5195,13 +5307,12 @@ begin
 
   case key of
     VK_Return: begin
-        // MediaListPopupTag := 3; // Set the value to "VST"
-        case NempPlaylist.DefaultAction of
-            PLAYER_ENQUEUE_FILES: PM_ML_Enqueue.Click  ;
-            PLAYER_PLAY_FILES   : PM_ML_Play.Click     ;
-            PLAYER_PLAY_NEXT    : PM_ML_PlayNext.Click ;
-            PLAYER_PLAY_NOW     : PM_ML_PlayNow.Click  ;
-        end;
+      case NempPlaylist.DefaultAction of
+        PLAYER_ENQUEUE_FILES: PlayEnqueueFromView(PM_ML_Enqueue.Tag);
+        PLAYER_PLAY_FILES   : PlayEnqueueFromView(PM_ML_Play.Tag);
+        PLAYER_PLAY_NEXT    : PlayEnqueueFromView(PM_ML_PlayNext.Tag);
+        PLAYER_PLAY_NOW     : DirectPlayFocusedFile;
+      end;
     end;
 
     VK_F3:
@@ -5465,9 +5576,9 @@ end;
 
 procedure TNemp_MainForm.pm_TagDetailsClick(Sender: TObject);
 begin
-  if not assigned(MedienBib.CurrentAudioFile) then
-    exit;
-  ShowDetailForm(MedienBib.CurrentAudioFile, True);
+  // if not assigned(MedienBib.CurrentAudioFile) then
+  //   exit;
+  ShowDetailForm(CurrentlySelectedFile, True);
 end;
 
 
@@ -5482,10 +5593,10 @@ var newTagDummy: String;
     backup: UTF8String;
     IgnoreWarningsDummy: Boolean;
 begin
-    backup := MedienBib.CurrentAudioFile.RawTagLastFM;
+    backup := CurrentlySelectedFile.RawTagLastFM;
 
-    if HandleSingleFileTagChange(MedienBib.CurrentAudioFile, '', newTagDummy, IgnoreWarningsDummy) then
-        DoSyncStuffAfterTagEdit(MedienBib.CurrentAudioFile,backup);
+    if HandleSingleFileTagChange(CurrentlySelectedFile, '', newTagDummy, IgnoreWarningsDummy) then
+        DoSyncStuffAfterTagEdit(CurrentlySelectedFile, backup);
 end;
 
 procedure TNemp_MainForm.PM_RenameTagThisFileClick(Sender: TObject);
@@ -5493,26 +5604,25 @@ var newTagDummy: String;
     backup: UTF8String;
     IgnoreWarningsDummy: Boolean;
 begin
-    backup := MedienBib.CurrentAudioFile.RawTagLastFM;
+    backup := CurrentlySelectedFile.RawTagLastFM;
 
-    if HandleSingleFileTagChange(MedienBib.CurrentAudioFile, CurrentTagToChange, newTagDummy, IgnoreWarningsDummy) then
-        DoSyncStuffAfterTagEdit(MedienBib.CurrentAudioFile,backup);
+    if HandleSingleFileTagChange(CurrentlySelectedFile, CurrentTagToChange, newTagDummy, IgnoreWarningsDummy) then
+        DoSyncStuffAfterTagEdit(CurrentlySelectedFile, backup);
 end;
 
 procedure TNemp_MainForm.PM_RemoveTagThisFileClick(Sender: TObject);
 var backup: UTF8String;
 begin
-    if not assigned(MedienBib.CurrentAudioFile) then
-        exit;
+    //if not assigned(CurrentlySelectedFile) then
+    //    exit;
 
     if (MedienBib.StatusBibUpdate <= 1)
-        and (MedienBib.CurrentThreadFilename <> MedienBib.CurrentAudioFile.Pfad)
+        and (MedienBib.CurrentThreadFilename <> CurrentlySelectedFile.Pfad)
     then
     begin
-        backup := MedienBib.CurrentAudioFile.RawTagLastFM;
-        MedienBib.CurrentAudioFile.RemoveTag(CurrentTagToChange);
-
-        DoSyncStuffAfterTagEdit(MedienBib.CurrentAudioFile,backup);
+        backup := CurrentlySelectedFile.RawTagLastFM;
+        CurrentlySelectedFile.RemoveTag(CurrentTagToChange);
+        DoSyncStuffAfterTagEdit(CurrentlySelectedFile, backup);
     end;
 end;
 
@@ -5525,23 +5635,23 @@ Tag Management: Global Rules
 procedure TNemp_MainForm.PM_TagIgnoreListClick(Sender: TObject);
 var backup: UTF8String;
 begin
-    if not assigned(MedienBib.CurrentAudioFile) then
-        exit;
+    //if not assigned(MedienBib.CurrentAudioFile) then
+    //    exit;
 
-    backup := MedienBib.CurrentAudioFile.RawTagLastFM;
+    backup := CurrentlySelectedFile.RawTagLastFM;
 
     if (MedienBib.StatusBibUpdate <= 1)
-        and (MedienBib.CurrentThreadFilename <> MedienBib.CurrentAudioFile.Pfad)
+        and (MedienBib.CurrentThreadFilename <> CurrentlySelectedFile.Pfad)
     then
     begin
         if HandleIgnoreRule(CurrentTagToChange) then
         begin
             // update the current File NOW
-            MedienBib.CurrentAudioFile.ChangeTag(CurrentTagToChange, '');
-            MedienBib.RelocateAudioFile(MedienBib.CurrentAudioFile);
-            DoSyncStuffAfterTagEdit(MedienBib.CurrentAudioFile, backup);
+            CurrentlySelectedFile.ChangeTag(CurrentTagToChange, '');
+            // MedienBib.RelocateAudioFile(MedienBib.CurrentAudioFile); // (2023) will be done in Bib.ChangeTags
+            DoSyncStuffAfterTagEdit(CurrentlySelectedFile, backup);
             // show the tags again.
-            CreateTagLabels(MedienBib.CurrentAudioFile);
+            CreateTagLabels(CurrentlySelectedFile);
             // update all files, show hint to activate the Looooong procedure later.
             MedienBib.ChangeTags(CurrentTagToChange, '');
             MedienBib.RefreshCollections;
@@ -5558,24 +5668,25 @@ procedure TNemp_MainForm.PM_TagMergeListClick(Sender: TObject);
 var backup: UTF8String;
     newTag: String;
 begin
-    if not assigned(MedienBib.CurrentAudioFile) then
-        exit;
+    //if not assigned(MedienBib.CurrentAudioFile) then
+    //  exit;
 
     // the tag to ignore is stored in the global variable "CurrentTagToChange"
-    backup := MedienBib.CurrentAudioFile.RawTagLastFM;
+    backup := CurrentlySelectedFile.RawTagLastFM;
 
     if (MedienBib.StatusBibUpdate <= 1)
-        and (MedienBib.CurrentThreadFilename <> MedienBib.CurrentAudioFile.Pfad)
+        and (MedienBib.CurrentThreadFilename <> CurrentlySelectedFile.Pfad)
     then
     begin
         if HandleMergeRule(CurrentTagToChange, newTag) then
         begin
             // update the current File NOW
-            MedienBib.CurrentAudioFile.ChangeTag(CurrentTagToChange, newTag);
-            MedienBib.RelocateAudioFile(MedienBib.CurrentAudioFile);
-            DoSyncStuffAfterTagEdit(MedienBib.CurrentAudioFile, backup);
+            CurrentlySelectedFile.ChangeTag(CurrentTagToChange, newTag);
+            // MedienBib.RelocateAudioFile(MedienBib.CurrentAudioFile);
+            DoSyncStuffAfterTagEdit(CurrentlySelectedFile, backup);
             // show the tags again.
-            CreateTagLabels(MedienBib.CurrentAudioFile);
+            CreateTagLabels(CurrentlySelectedFile);
+
             // update all files, show hint to activate the Looooong procedure later.
             MedienBib.ChangeTags(CurrentTagToChange, newTag);
             MedienBib.RefreshCollections;
@@ -5588,6 +5699,13 @@ begin
         TranslateMessageDLG((Warning_MedienBibIsBusyCritical), mtWarning, [MBOK], 0);
 end;
 
+
+procedure TNemp_MainForm.pm_TagShowInExplorerClick(Sender: TObject);
+begin
+  if {assigned(MedienBib.CurrentAudioFile) and} DirectoryExists(CurrentlySelectedFile.Ordner) then
+  ShellExecute(Handle, 'open' ,'explorer.exe',
+      PChar('/e,/select,"' + CurrentlySelectedFile.Pfad+'"'), '', sw_ShowNormal);
+end;
 
 {
 ----------------------------------------
@@ -5621,8 +5739,8 @@ var KeyWords: TSearchKeyWords;
 
 begin
     // Show all Files from the clicked Artist/Album/Year/Genre
-    if not assigned(MedienBib.CurrentAudioFile) then
-        exit;
+    //if not assigned(MedienBib.CurrentAudioFile) then
+    //    exit;
 
     //Medienbib.BibSearcher.SearchOptions.SearchParam := 0;      // New Search
     Medienbib.BibSearcher.SearchOptions.AllowErrors := False;  // no errors allowed
@@ -5641,22 +5759,22 @@ begin
 
     case (Sender as TLabel).Tag of
         0: begin  // artist
-            KeyWords.Artist := MedienBib.CurrentAudioFile.Artist;
+            KeyWords.Artist := CurrentlySelectedFile.Artist;
             MedienBib.CompleteSearchNoSubStrings(Keywords);
         end;
         1: begin  // title  ... for cover songs and other versions?
-            KeyWords.Titel := MedienBib.CurrentAudioFile.Titel;
+            KeyWords.Titel := CurrentlySelectedFile.Titel;
             MedienBib.CompleteSearchNoSubStrings(Keywords);
         end;
         2: begin // album
-            KeyWords.Album  := MedienBib.CurrentAudioFile.Album;
+            KeyWords.Album  := CurrentlySelectedFile.Album;
             MedienBib.CompleteSearchNoSubStrings(Keywords);
         end;
         4: begin // year
             Medienbib.BibSearcher.SearchOptions.SkipYearCheck  := False;
             Medienbib.BibSearcher.SearchOptions.WhichYearCheck := 2; // exact match
 
-            Medienbib.BibSearcher.SearchOptions.MinMaxYear := strtointdef(MedienBib.CurrentAudioFile.Year, 0);
+            Medienbib.BibSearcher.SearchOptions.MinMaxYear := strtointdef(CurrentlySelectedFile.Year, 0);
             Medienbib.BibSearcher.SearchOptions.IncludeNAYear := False;
             Medienbib.BibSearcher.SearchOptions.Include0Year := False;
             MedienBib.CompleteSearchNoSubStrings(Keywords);
@@ -5664,7 +5782,7 @@ begin
         5: begin // genre
             tmpGenreList := TStringList.Create;
             try
-                tmpGenreList.Add(MedienBib.CurrentAudioFile.Genre);
+                tmpGenreList.Add(CurrentlySelectedFile.Genre);
                 Medienbib.BibSearcher.SearchOptions.GenreStrings := tmpGenreList;
                 Setlength(Medienbib.BibSearcher.SearchOptions.GenreChecked, 1);
                 Medienbib.BibSearcher.SearchOptions.GenreChecked[0] := true;
@@ -5676,7 +5794,7 @@ begin
             end;
         end;
         6: begin // new: Directory
-          KeyWords.Ordner := MedienBib.CurrentAudioFile.Ordner;
+          KeyWords.Ordner := CurrentlySelectedFile.Ordner;
           MedienBib.CompleteSearchNoSubStrings(Keywords);
 
         end;
@@ -5690,14 +5808,18 @@ var newLabel: TLabel;
     tmpTagList: TStringlist;
     baseLeft: Integer;
 begin
+    try
+      DetailID3TagPanel.DisableAlign;
+      TagLabelList.Clear;
+      DetailID3TagPanel.EnableAlign;
+    except
+      DetailID3TagPanel.EnableAlign;
+    end;
 
-    TagLabelList.Clear;
     currentTop := LblBibDirectory.Top + LblBibDirectory.Height + 12;
-      // LblBibReplayGain.Top + LblBibReplayGain.Height + 12;
 
     baseLeft := 8;
     currentLeft := baseleft;
-
     if assigned(aAudioFile) then
     begin
         case aAudioFile.AudioType of
@@ -5711,7 +5833,6 @@ begin
                         TagLabelList.Add(newLabel);
 
                         newLabel.Parent := DetailID3TagPanel;
-                        //newLabel.Parent := sbFileOverview;
                         newLabel.ShowAccelChar := False;
                         newLabel.AutoSize := True;
                         newLabel.Caption := tmpTagList[i];
@@ -5831,10 +5952,10 @@ begin
     // image-stretch property.
     RefreshVSTCoverTimer.Enabled := False;
     if assigned(MedienBib) then
-        RefreshVSTCover(MedienBib.CurrentAudioFile);
+        RefreshVSTCover(CurrentlySelectedFile);
 
     if assigned(MedienBib) then
-        CreateTagLabels(MedienBib.CurrentAudioFile);
+        CreateTagLabels(CurrentlySelectedFile);
 end;
 
 procedure TNemp_MainForm.RefreshVSTDetailsTimerTimer(Sender: TObject);
@@ -5884,6 +6005,27 @@ begin
   end;
 end;
 
+procedure TNemp_MainForm.CDDBConsistencyCheck(af: TAudioFile);
+var
+  cddbID: UTF8String;
+  DriveNo: Integer;
+begin
+  cddbID := TCDDADrive.GetDriveCDDBID(af.Pfad);
+  if (cddbID = '') or (String(cddbID) <> af.Comment) then begin
+    DriveNo := TCDDADrive.GetDriveNumber(af.Pfad);
+    if (DriveNo < 0) or (DriveNo >= CDDriveList.Count) then begin
+      // Invalid Drive, probably an disconnected external CDDrive. What to do in this case?
+      // (nothing for now)
+    end
+    else begin
+      // Drive exists
+      CDDriveList[DriveNo].ClearDiscInformation;
+      CDDriveList[DriveNo].GetDiscInformation(NempOptions.UseCDDB, NempOptions.PreferCDDB);
+      NempPlaylist.SynchFilesWithCDDrive(CDDriveList[DriveNo]);
+    end;
+  end;
+end;
+
 procedure TNemp_MainForm.ShowVSTDetails(aAudioFile: TAudioFile; Source: Integer = SD_MEDIENBIB);
 var DoShowDetails, SameFile: Boolean;
     MainFile: TAudioFile;
@@ -5895,7 +6037,7 @@ begin
 
   // SameFile: Show Information about different Cue, even if the display is locked
   // to only the currently playing file
-  SameFile := MedienBib.CurrentAudioFile = MainFile;
+  SameFile := CurrentlySelectedFile = MainFile;
 
   case Source of
       -1: DoShowDetails := True;
@@ -5908,7 +6050,7 @@ begin
   if not DoShowDetails then
     exit;
 
-  MedienBib.CurrentAudioFile := MainFile;
+  CurrentlySelectedFile := MainFile;
   if Source <> - 1 then
       pm_TagDetails.Tag := Source;
 
@@ -5926,15 +6068,12 @@ begin
 
   ImgBibRating  .Visible :=  assigned(aAudioFile);
 
+  // check, whether the current cd is valid for the AudioFile-Object
+  // this is VERY important for the cover-downloading:
+  // if album-Artist-data does not match the cddb-id, a wrong cover will be downloaded
+  // and displayed permanently
   if assigned(MainFile) and (MainFile.isCDDA) then
-  begin
-      // check, whether the current cd is valid for the AudioFile-Object
-      // this is VERY important for the cover-downloading:
-      // if album-Artist-data does not match the cddb-id, a wrong cover will be downloaded
-      // and displayed permanently
-      if (CddbIDFromCDDA(MainFile.Pfad) <> MainFile.Comment) then
-          MainFile.GetAudioData(MainFile.Pfad, 0);
-  end;
+    CDDBConsistencyCheck(MainFile);
 
   FillBibDetailLabels(aAudioFile);
   CreateTagLabels(MainFile);
@@ -5981,7 +6120,7 @@ begin
       at_CDDA: begin
           ImgBibRating.Visible := False;
           LblBibDuration  .Caption := NempDisplay.SummaryDuration(MainFile) ;
-          LblBibQuality.Caption := 'CD-Audio';
+          LblBibQuality.Caption := NempDisplay.SummaryQuality(aAudioFile); //'CD-Audio';
           LblBibPlayCounter.Caption := '';
           LblBibReplayGain.Caption := '';
       end;
@@ -5990,8 +6129,8 @@ end;
 
 procedure TNemp_MainForm.ImgDetailCoverDblClick(Sender: TObject);
 begin
-    if assigned(MedienBib.CurrentAudioFile) then
-      MedienBib.GenerateAlbumAnzeigeListe(MedienBib.CurrentAudioFile);
+    // if assigned(MedienBib.CurrentAudioFile) then
+      MedienBib.GenerateAlbumAnzeigeListe(CurrentlySelectedFile);
       //ShowDetailForm(MedienBib.CurrentAudioFile, True);
 end;
 
@@ -6021,7 +6160,7 @@ begin
           end
           else
           if (Sender = ImgDetailCover) then
-              af := MedienBib.CurrentAudioFile
+              af := CurrentlySelectedFile
           else
               af := Nil;
 
@@ -6062,17 +6201,17 @@ begin
         and (Button = mbLeft)
     then
     begin
-        if Assigned(MedienBib.CurrentAudioFile)
-           and (MedienBib.StatusBibUpdate <= 1)
-           and (MedienBib.CurrentThreadFilename <> MedienBib.CurrentAudioFile.Pfad)
+        if // Assigned(MedienBib.CurrentAudioFile) and
+           (MedienBib.StatusBibUpdate <= 1)
+           and (MedienBib.CurrentThreadFilename <> CurrentlySelectedFile.Pfad)
         then
         begin
               // Sync with ID3tags (to be sure, that no ID3Tags are deleted)
-              MedienBib.CurrentAudioFile.GetAudioData(MedienBib.CurrentAudioFile.Pfad);
+              CurrentlySelectedFile.GetAudioData(CurrentlySelectedFile.Pfad);
               ListOfFiles := TAudioFileList.Create(False);
               try
                   // get List of this AudioFile
-                  GetListOfAudioFileCopies(MedienBib.CurrentAudioFile, ListOfFiles);
+                  GetListOfAudioFileCopies(CurrentlySelectedFile, ListOfFiles);
                   newRating := BibRatingHelper.MousePosToRating(x, ImgBibRating.Width);
                   // edit all these files
                   for i := 0 to ListOfFiles.Count - 1 do
@@ -6082,15 +6221,15 @@ begin
                   end;
                   // write the rating into the file on disk
                   // aErr := MedienBib.CurrentAudioFile.SetAudioData(NempOptions.AllowQuickAccessToMetadata);
-                  aErr := MedienBib.CurrentAudioFile.WriteRatingsToMetaData(newRating, NempOptions.AllowQuickAccessToMetadata);
-                  HandleError(afa_SaveRating, MedienBib.CurrentAudioFile, aErr);
+                  aErr := CurrentlySelectedFile.WriteRatingsToMetaData(newRating, NempOptions.AllowQuickAccessToMetadata);
+                  HandleError(afa_SaveRating, CurrentlySelectedFile, aErr);
                   
                   MedienBib.Changed := True;
               finally
                   ListOfFiles.Free;
               end;
               // Correct GUI (player, Details, Detailform, VSTs))
-              CorrectVCLAfterAudioFileEdit(MedienBib.CurrentAudioFile);
+              CorrectVCLAfterAudioFileEdit(CurrentlySelectedFile);
         end else
         begin
             TranslateMessageDLG((Warning_MedienBibIsBusyCritical), mtWarning, [MBOK], 0);
@@ -6103,8 +6242,8 @@ begin
     if (not NempSkin.NempPartyMode.DoBlockTreeEdit)
     then
     begin
-        if Assigned(MedienBib.CurrentAudioFile) then
-            BibRatingHelper.DrawRatingInStarsOnBitmap(MedienBib.CurrentAudioFile.Rating, ImgBibRating.Picture.Bitmap, ImgBibRating.Width, ImgBibRating.Height)
+        if Assigned(CurrentlySelectedFile) then
+            BibRatingHelper.DrawRatingInStarsOnBitmap(CurrentlySelectedFile.Rating, ImgBibRating.Picture.Bitmap, ImgBibRating.Width, ImgBibRating.Height)
         else
             BibRatingHelper.DrawRatingInStarsOnBitmap(128, ImgBibRating.Picture.Bitmap, ImgBibRating.Width, ImgBibRating.Height);
     end;
@@ -6635,6 +6774,23 @@ begin
   end;
 end;
 
+procedure TNemp_MainForm.ClearBrowseTrees;
+begin
+  case MedienBib.BrowseMode of
+    0: begin
+        ArtistsVST.Clear;
+        AlbenVST.Clear;
+    end;
+    1: begin
+        MedienBib.NewCoverFlow.Clear;
+    end;
+    2: begin
+      CloudViewer.Clear;
+      CloudViewer.Repaint;
+    end;
+  end;
+end;
+
 procedure TNemp_MainForm.ReFillBrowseTrees(RemarkOldNodes: LongBool);
 begin
   case MedienBib.BrowseMode of
@@ -6667,8 +6823,8 @@ end;
 
 
 procedure TNemp_MainForm.RefreshCoverFlowTimerTimer(Sender: TObject);
-var
-  i: Integer;
+//var
+//  i: Integer;
 begin
     RefreshCoverFlowTimer.Enabled := False;
     if Not MedienBib.BibSearcher.QuickSearchOptions.ChangeCoverFlow then
@@ -7296,64 +7452,40 @@ begin
   end;
 end;
 
-procedure TNemp_MainForm.PlayPauseBTNIMGClick(Sender: TObject);
-var fNode: PVirtualNode;
+procedure TNemp_MainForm.TogglePlayPause(WantDialog: Boolean);
+var
+  fNode: PVirtualNode;
 begin
   NempPlaylist.UserInput;
-  if (NempPlayer.MainStream = 0) AND (NempPlaylist.Count = 0) and (not assigned(NempPlaylist.PlayingFile)) then
-  begin
+  if WantDialog
+      and (NempPlayer.MainStream = 0)
+      and (NempPlaylist.Count = 0)
+      and (not assigned(NempPlaylist.PlayingFile))
+  then begin
       MM_PL_FilesClick(NIL);
       exit;
   end;
 
-  if NempPlayer.MainStream = 0 then
-  begin
-      NempPlayer.LastUserWish := USER_WANT_PLAY;
-      fNode := PlaylistVST.FocusedNode;
-      if assigned(fNode) then
-      begin
-          if PlaylistVST.GetNodeLevel(fNode) <> 0 then
-              fNode := PlaylistVST.NodeParent[fNode];
-          NempPlaylist.Play(fNode.Index, NempPlayer.FadingInterval, True);
-      end else
-          NempPlaylist.Play(-1, NempPlayer.FadingInterval, True);
+  if NempPlayer.MainStream = 0 then begin
+    NempPlayer.LastUserWish := USER_WANT_PLAY;
+    fNode := PlaylistVST.FocusedNode;
+    if assigned(fNode) then begin
+      if PlaylistVST.GetNodeLevel(fNode) <> 0 then
+          fNode := PlaylistVST.NodeParent[fNode];
+      NempPlaylist.Play(fNode.Index, NempPlayer.FadingInterval, True);
+    end else
+        NempPlaylist.Play(-1, NempPlayer.FadingInterval, True);
   end
   else
-    case NempPlayer.BassStatus of
-      BASS_ACTIVE_PAUSED  : begin // ok
-            NempPlayer.LastUserWish := USER_WANT_PLAY;
-            NempPlayer.resume;
-      end;
-      BASS_ACTIVE_STOPPED : begin   // ok
-            NempPlayer.LastUserWish := USER_WANT_PLAY;
-            // Der Stream-Status ist also STOPPED
-            // Da kann durch echten Stop passiert sein,
-            // oder durch ein ausfaden nach Klick auf den Pause-Button.
-            if NempPlayer.Status = PLAYER_ISPAUSED then
-                NempPlayer.resume
-            else
-            begin
-                //NempPlayer.AutoPlayNextFile := Not ((GetAsyncKeyState(vk_shift) < 0) and (GetAsyncKeyState(vk_Control) >= 0));
-                NempPlaylist.PlayAgain(True);
-            end;
-      end;
-      BASS_ACTIVE_PLAYING: begin     // ok
-            if NempPlayer.Status = PLAYER_ISPLAYING then
-            begin
-                NempPlayer.LastUserWish := USER_WANT_STOP;
-                NempPlaylist.pause;
-            end
-            else
-              if NempPlayer.Status = PLAYER_ISPAUSED then
-              begin
-                  NempPlayer.LastUserWish := USER_WANT_PLAY;
-                  NempPlayer.resume;
-              end;
-      end;
+    NempPlaylist.TogglePlayPause(True);
 
-    end;
   Basstimer.Enabled := NempPlayer.Status = PLAYER_ISPLAYING;
   PlaylistVST.Invalidate;
+end;
+
+procedure TNemp_MainForm.PlayPauseBTNIMGClick(Sender: TObject);
+begin
+  TogglePlayPause(True);
 end;
 
 procedure TNemp_MainForm.PLayPauseBtnHeadsetClick(Sender: TObject);
@@ -7369,7 +7501,7 @@ end;
 procedure TNemp_MainForm.BtnLoadHeadsetClick(Sender: TObject);
 begin
     // Play new song in headset
-    NempPlayer.PlayInHeadset(MedienBib.CurrentAudioFile);
+    NempPlayer.PlayInHeadset(CurrentlySelectedFile);
     // Show Details
     DisplayHeadsetTitleInformation(False);
 end;
@@ -7381,6 +7513,7 @@ end;
 
 procedure TNemp_MainForm.PM_PlayCDAudioClick(Sender: TObject);
 var CurrentIdx, i: Integer;
+  newFile: TAudioFile;
 begin
     CurrentIdx := NempPlaylist.Count; // CurrentIdx ist der erwartete Index des ersten neu eingefügten Files
 
@@ -7389,8 +7522,11 @@ begin
 
     if CDOpenDialog.ShowModal = mrOK then
     begin
-        for i := 0 to CDOpenDialog.Files.Count - 1 do
-            NempPlaylist.AddFileToPlaylist(CDOpenDialog.Files[i]);
+        for i := 0 to CDOpenDialog.SelectedFiles.Count - 1 do begin
+          newFile := TAudioFile.Create;
+          newFile.Assign(CDOpenDialog.SelectedFiles[i]);
+          NempPlaylist.AddFileToPlaylist(newFile);
+        end;
         if (NempPlaylist.Count > CurrentIdx) then
         begin
             NempPlayer.LastUserWish := USER_WANT_PLAY;
@@ -7588,7 +7724,7 @@ end;
 procedure TNemp_MainForm.PM_PL_PlayInHeadsetClick(Sender: TObject);
 begin
     // Play new song in headset
-    NempPlayer.PlayInHeadset(MedienBib.CurrentAudioFile);
+    NempPlayer.PlayInHeadset(CurrentlySelectedFile);
 
     // Show Headset Controls and File Details
     TabBtn_MainPlayerControl.GlyphLine := 1;
@@ -8046,9 +8182,12 @@ begin
     // Select a new Node flagged with "aFlag"
     // Begin with the currently focussed node, or the first node in the playlist
     if assigned(PlaylistVst.FocusedNode) then
-        StartNode := PlaylistVst.FocusedNode
+      StartNode := PlaylistVst.FocusedNode
     else
-        StartNode := PlaylistVst.GetFirst;
+      StartNode := PlaylistVst.GetFirst;
+    if not assigned(StartNode) then
+      exit; // empty list, nothing to do here ...
+
     PlaylistVST.Selected[StartNode] := False;
     // we want the *next* node
     // => begin with the next node (or the first one, if the current node is the last one in the playlist)
@@ -8091,14 +8230,33 @@ begin
     end;
 end;
 
+function TNemp_MainForm.GetCurrentlySelectedFile: TAudioFile;
+begin
+  result := fCurrentlySelectedFile;
+end;
+
+
+procedure TNemp_MainForm.SetCurrentlySelectedFile(Value: TAudioFile);
+begin
+  if assigned(Value) then
+    fCurrentlySelectedFile.Assign(Value)
+  else
+    fCurrentlySelectedFile.Clear;
+
+end;
+
+
 procedure TNemp_MainForm.PlaylistScrollToPlayingFile;
 var aNode: PVirtualNode;
 begin
-    aNode := GetNodeWithAudioFile(PlaylistVST, NempPlaylist.PlayingFile);
-    // if there is a CueList attached: scroll into the active CueNode
-    if assigned(NempPlaylist.PlayingFile.CueList) then
-      aNode := GetNodeWithCueFile(PlaylistVST, aNode, NempPlayer.GetActiveCue);
-    PlaylistVST.ScrollIntoView(aNode, True);
+  if not assigned(NempPlaylist.PlayingFile) then
+    exit;
+
+  aNode := GetNodeWithAudioFile(PlaylistVST, NempPlaylist.PlayingFile);
+  // if there is a CueList attached: scroll into the active CueNode
+  if assigned(NempPlaylist.PlayingFile.CueList) then
+    aNode := GetNodeWithCueFile(PlaylistVST, aNode, NempPlayer.GetActiveCue);
+  PlaylistVST.ScrollIntoView(aNode, True);
 end;
 
 procedure TNemp_MainForm.PlayerArtistLabelDblClick(Sender: TObject);
@@ -8140,8 +8298,8 @@ end;
 procedure TNemp_MainForm.PlaylistDeleteFile(Sender: TNempPlaylist; aFile: TAudioFile; aIndex: Integer);
 var aNode: PVirtualNode;
 begin
-    if MedienBib.CurrentAudioFile = aFile then
-        MedienBib.CurrentAudioFile := Nil;
+    //if MedienBib.CurrentAudioFile = aFile then
+    //    MedienBib.CurrentAudioFile := Nil;
 
     // Todo: remove aFile from the DuplicateCollector (if needed)
     if assigned(FormPlaylistDuplicates) and FormPlaylistDuplicates.Visible then
@@ -8195,6 +8353,9 @@ begin
     StartNode := PlaylistVst.FocusedNode
   else
     StartNode := PlaylistVst.GetFirst;
+  if not assigned(StartNode) then
+      exit; // empty list, nothing to do here ...
+
   PlaylistVST.Selected[StartNode] := False;
   // we want the *next* Duplicate
   // => begin with the next node (or the first one, if the current node is the last one in the playlist)
@@ -8311,17 +8472,22 @@ end;
 ///    Node still matches the search results, we do nothing
 ///    Otherwise, we scroll to the next matching node
 procedure TNemp_MainForm.PlaylistSearchResultsChanged(Sender: TNempPlaylist);
-var af: TAudioFile;
-    StartNode: PVirtualNode;
+var
+  af: TAudioFile;
+  StartNode: PVirtualNode;
 begin
-    if assigned(PlaylistVst.FocusedNode) then
-        StartNode := PlaylistVst.FocusedNode
-    else
-        StartNode := PlaylistVst.GetFirst;
-
+  if assigned(PlaylistVst.FocusedNode) then
+    StartNode := PlaylistVst.FocusedNode
+  else
+    StartNode := PlaylistVst.GetFirst;
+  if assigned(StartNode) then begin
+    // we do not consider CueSheets in the Search
+    if PlaylistVst.GetNodeLevel(StartNode) > 0 then
+      StartNode := StartNode.Parent;
     af := PlaylistVST.GetNodeData<TAudioFile>(StartNode);
-    if not af.IsSearchResult then
+    if assigned(af) and (not af.IsSearchResult) then
         PlaylistSelectNextSearchresult;
+  end;
 end;
 
 ///  PlaylistCleared
@@ -8421,6 +8587,9 @@ begin
             CoverImage.Refresh;
             if assigned(af) then
             begin
+                if af.isCDDA then
+                  CDDBConsistencyCheck(af);
+
                 PlayerArtistLabel.Caption := NempDisplay.PlayerLine1(af, cueFile); //'TODO Line1' ;//NempPlayer.PlayerLine1;
                 PlayerTitleLabel.Caption  := NempDisplay.PlayerLine2(af, cueFile); //'TODO Line2' ;// NempPlayer.PlayerLine2;
 
@@ -8716,7 +8885,7 @@ begin
       begin
           newdir := fb.SelectedItem;
           NempPlaylist.InitialDialogFolder := fb.SelectedItem;
-
+          MarkCDDriveDataAsDeprecated;
           //NempPlaylist.InsertNode := Nil;
           NempPlaylist.ResetInsertIndex;
           ST_Playlist.Mask := GeneratePlaylistSTFilter;
@@ -8746,6 +8915,7 @@ end;
 procedure TNemp_MainForm.PM_PL_AddCDAudioClick(Sender: TObject);
 var i: integer;
   Abspielen: Boolean;
+  newFile: TAudioFile;
 begin
     // Playlistlänge merken
     Abspielen := NempPlaylist.Count = 0;
@@ -8757,8 +8927,11 @@ begin
 
     if CDOpenDialog.ShowModal = mrOK then
     begin
-        for i := 0 to CDOpenDialog.Files.Count - 1 do
-            NempPlaylist.AddFileToPlaylist(CDOpenDialog.Files[i]);
+        for i := 0 to CDOpenDialog.SelectedFiles.Count - 1 do begin
+          newFile := TAudioFile.Create;
+          newFile.Assign(CDOpenDialog.SelectedFiles[i]);
+          NempPlaylist.AddFileToPlaylist(newFile);
+        end;
     end;
 
     // ggf. abspielen
@@ -8779,9 +8952,11 @@ begin
   Abspielen := NempPlaylist.Count = 0;
 
   // einfügen
-  if PlaylistDateienOpenDialog.Execute then
+  if PlaylistDateienOpenDialog.Execute then begin
+    MarkCDDriveDataAsDeprecated;
     for i := 0 to PlaylistDateienOpenDialog.Files.Count - 1 do
       NempPlaylist.AddFileToPlaylist(PlaylistDateienOpenDialog.Files[i]);
+  end;
 
   // ggf. abspielen
   if abspielen AND (NempPlaylist.Count > 0) then
@@ -9238,11 +9413,16 @@ begin
   ///  Application.ProcessMessages involved.
   ///  However, This method is probably very rarely used, and in most cases the
   ///  playlist contains <1000 files or so, which should be scanned quite fast.
-  ClearCDDBCache;
+
+  ClearCDDriveData;
 
   NempPlayer.CoverArtSearcher.StartNewSearch;
-  for i := 0 to NempPlaylist.Playlist.Count - 1 do
+  for i := 0 to NempPlaylist.Playlist.Count - 1 do begin
+    if (NempPlaylist.Playlist[i].isCDDA) then
+      CDDBConsistencyCheck(NempPlaylist.Playlist[i])
+    else
       NempPlaylist.RefreshAudioFile(i, True);
+  end;
 end;
 
 procedure TNemp_MainForm.LyricsMemoKeyDown(Sender: TObject; var Key: Word;
@@ -9259,6 +9439,12 @@ end;
 
 
 
+
+procedure TNemp_MainForm.MM_HelpClick(Sender: TObject);
+begin
+  MM_H_CleanupUpdate.Visible := NempOptions.LastUpdateCleaningSuccess <> cCurrentCleanUpdate;
+  PM_P_CleanupUpdate.Visible := NempOptions.LastUpdateCleaningSuccess <> cCurrentCleanUpdate;
+end;
 
 procedure TNemp_MainForm.MM_H_AboutClick(Sender: TObject);
 begin
@@ -9655,7 +9841,7 @@ begin
   TabBtn_Cover.GlyphLine := TabBtn_Cover.Tag;
 
   LyricsMemo.Visible     := TabBtn_Cover.Tag = 1;
-  ImgDetailCover.Visible := TabBtn_Cover.Tag = 0;
+  ImgDetailCover.Visible := (TabBtn_Cover.Tag = 0);
 end;
 
 procedure TNemp_MainForm.TabBtn_SummaryLockClick(Sender: TObject);
@@ -9681,21 +9867,44 @@ end;
 
 
 procedure TNemp_MainForm.PM_ML_MedialibraryExportClick(Sender: TObject);
+var
+  ExportSuccess: Boolean;
 begin
   if NempSkin.NempPartyMode.DoBlockBibOperations then
       exit;
 
-  if MedienBib.StatusBibUpdate >= 2 then
+  if MedienBib.StatusBibUpdate <> 0 then
   begin
       TranslateMessageDLG((Warning_MedienBibIsBusy), mtWarning, [MBOK], 0);
       exit;
   end;
 
-//deleted Oktober, 9, 2008  SaveDialog1.InitialDir := myFolder;
+  MedienBib.PrepareExport;
+  if FormExport.ShowModal = mrOK then begin
+    if FormExport.ExportMode = 3 then
+      ExportSuccess := MedienBib.DoPlaylistExport(NempPlaylist.Playlist, FormExport.ExportFilename)
+    else
+      ExportSuccess := MedienBib.DoExport(FormExport.ExportMode, FormExport.ExportFilename);
+
+    if ExportSuccess then begin
+      if TranslateMessageDLG((ExportSucceeded), mtInformation, [MBYes, MBNo], 0) = mrYes then
+        ShellExecute(Handle, 'open', PChar(FormExport.ExportFilename), nil, nil, SW_SHOWNORMAl);
+    end else begin
+      if FormExport.ExportMode = 1 then // export CurrentCategory
+        TranslateMessageDLG((ExportFailed_CurrentCategory), mtWarning, [MBOK], 0)
+      else
+        TranslateMessageDLG((ExportFailed_Unknown), mtWarning, [MBOK], 0)
+    end;
+
+    MedienBib.FinishExport(True);
+  end else
+    MedienBib.FinishExport(False);
+ (*
   SaveDialog1.Filter := (MediaLibrary_CSVFilter) + ' (*.csv)|*.csv';
   if SaveDialog1.Execute then
       if not MedienBib.SaveAsCSV(SaveDialog1.FileName) then
         TranslateMessageDLG((Warning_MedienBibIsBusy), mtWarning, [MBOK], 0);
+  *)
 end;
 
 procedure TNemp_MainForm.PM_P_CloseClick(Sender: TObject);
@@ -10061,7 +10270,7 @@ begin
 end;
 
 
-procedure TNemp_MainForm.PlaylistVSTGetHint(Sender: TBaseVirtualTree;
+procedure TNemp_MainForm.TitlesVSTGetHint(Sender: TBaseVirtualTree;
   Node: PVirtualNode; Column: TColumnIndex;
   var LineBreakStyle: TVTTooltipLineBreakStyle; var HintText: String);
 var af: TAudioFile;
@@ -10073,6 +10282,7 @@ begin
       //LineBreakStyle := hlbForceSingleLine;
   end;
 end;
+
 
 
 procedure TNemp_MainForm.VSTAfterItemErase(Sender: TBaseVirtualTree;
@@ -10310,6 +10520,7 @@ begin
         CoverScrollbar.WindowProc := OldScrollbarWindowProc;
         LyricsMemo.WindowProc := OldLyricMemoWindowProc;
         AlphaBlendBMP.Free;
+        fCurrentlySelectedFile.Free;
         Spectrum.Free;
         NempSkin.Free;
         NempPlaylist.Free;
@@ -11898,17 +12109,14 @@ begin
   if (CoverScrollbar.Position > MedienBib.NewCoverFlow.CoverCount - 1) then
     exit;
 
-  ac := MedienBib.NewCoverFlow.Collection[CoverScrollbar.Position];
-  if ac.CollectionClass = ccWebStations then begin
-    TAudioWebradioCollection(ac).Station.TuneIn(NempPlaylist.BassHandlePlaylist);
+  if NempPlaylist.UseDefaultActionOnCoverFlowDoubleClick then begin
+    ac := MedienBib.NewCoverFlow.Collection[CoverScrollbar.Position];
+    case  ac.CollectionClass of
+      ccFiles: PlayEnqueue(ac, NempPlaylist.DefaultAction);
+      ccPlaylists: PlayEnqueue(ac, NempPlaylist.DefaultAction);
+      ccWebStations: TAudioWebradioCollection(ac).Station.TuneIn(NempPlaylist.BassHandlePlaylist);
+    end;
   end;
-end;
-
-
-procedure TNemp_MainForm.PanelCoverBrowseEndDrag(Sender, Target: TObject; X,
-  Y: Integer);
-begin
-showmessage('sdsdsdsd');
 end;
 
 procedure TNemp_MainForm.PanelCoverBrowseMouseDown(Sender: TObject;
@@ -12317,6 +12525,13 @@ end;
 procedure TNemp_MainForm.MM_H_CheckForUpdatesClick(Sender: TObject);
 begin
     NempUpdater.CheckForUpdatesManually;
+end;
+
+procedure TNemp_MainForm.MM_H_CleanupUpdateClick(Sender: TObject);
+begin
+  if not assigned(FormUpdateCleaning) then
+    Application.CreateForm(TFormUpdateCleaning, FormUpdateCleaning);
+  FormUpdateCleaning.Show;
 end;
 
 procedure TNemp_MainForm.MM_H_ErrorLogClick(Sender: TObject);
@@ -12916,6 +13131,37 @@ begin
     SetDragHint(Sender.DragManager.DataObject, szMessage, '', Effect);
 end;
 
+procedure TNemp_MainForm.TitlesVSTGetHintKind(Sender: TBaseVirtualTree;
+  Node: PVirtualNode; Column: TColumnIndex; var Kind: TVTHintKind);
+begin
+  if MedienBib.ShowAdvancedHints then
+    Kind := vhkOwnerDraw
+  else
+    Kind := vhkText;
+end;
+
+procedure TNemp_MainForm.TitlesVSTDrawHint(Sender: TBaseVirtualTree;
+  HintCanvas: TCanvas; Node: PVirtualNode; R: TRect; Column: TColumnIndex);
+var
+  af: TAudioFile;
+begin
+  af := Sender.GetNodeData<TAudioFile>(Node);
+  if assigned(af) then
+    VSTDrawCoverHint((Sender as TVirtualStringTree), HintCanvas, af, R, BibRatingHelper);
+end;
+
+procedure TNemp_MainForm.TitlesVSTGetHintSize(Sender: TBaseVirtualTree;
+  Node: PVirtualNode; Column: TColumnIndex; var R: TRect);
+var
+  af: TAudioFile;
+begin
+  af := Sender.GetNodeData<TAudioFile>(Node);
+  if assigned(af) then
+    VSTGetCoverHintSize((Sender as TVirtualStringTree), af, R, BibRatingHelper);
+end;
+
+
+
 ///  * Other Controls, handled by our own NempDropManager
 ///    - The Player Control
 ///    - The CoverFlow
@@ -13354,12 +13600,20 @@ begin
 end;
 
 procedure TNemp_MainForm.ReAlignControlCover;
+var
+  currentVis: Boolean;
 begin
+  currentVis := PlayerControlCoverPanel.Visible;
   PlayerControlCoverPanel.Visible := (_ControlPanel.Width > 550) and NempLayout.ShowControlCover;
-  if PlayerControlCoverPanel.Visible then
-      ControlContainer1.Width := OutputControlPanel.Width
+
+  if PlayerControlCoverPanel.Visible then begin
+    if not currentVis then
+      // refresh Display, especially the cover (otherwise there is a problem with transparency)
+      ShowMatchingControls;
+    ControlContainer1.Width := OutputControlPanel.Width
                          + PlayerControlCoverPanel.Width
                          + PlayerControlPanel.Width
+  end
   else
       ControlContainer1.Width := OutputControlPanel.Width
                          + PlayerControlPanel.Width

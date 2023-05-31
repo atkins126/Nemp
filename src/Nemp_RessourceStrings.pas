@@ -179,8 +179,6 @@ Warning_TooManyFiles = 'Warning: Too many files for Drag&Drop and Copy&Paste res
 
 Warning_MagicCopyFailed = 'Extended Copy&Paste failed. This method doesn''t work from write-protected drives (e.g. CD/DVD).';
 
-Error_ID3OnlyInMp3Files = 'ID3-tags can only be written to mp3-files.';
-
 //ErrorSavingPlaylist = 'An error occured while saving the playlist. This should not happen.';
 //ErrorSavingMediaLib = 'An error occured while saving the medialibrary. This should not happen.';
 ErrorLoadingMediaLib = 'An error occured while loading the media library. This should not happen.';
@@ -188,9 +186,6 @@ ErrorLoadingMediaLib = 'An error occured while loading the media library. This s
 Error_HelpFileNotFound = 'The helpfile could not be found.';
 Error_ReadmeFileNotFound = 'The readme.txt could not be found.';
 Error_LGPLFileNotFound = 'The licence.txt could not be found.';
-
-Error_ID3EditDenied = 'Edit of ID3-Tags denied. You can allow this by Preferences -> System -> Other.';
-
 
 
     BASS_ERRORSTR_INIT       = 'Initialization of the bass.dll failed';
@@ -460,7 +455,7 @@ MainForm_GlobalQuickSearch    = 'Quicksearch (library)';
 /// MainForm_MoreSearchresults  = 'Additional results (not limited to current preselection)';
 MainForm_NoSearchresults    = 'Nothing found. Try another search.';
 MainForm_EmptyCategory      = 'There are no files in the current category.';
-MainForm_EmptyBibPlaylist      = 'The playlist contains no files.';
+MainForm_EmptyBibPlaylist      = 'The playlist file doesn''t exist or contains no files.';
 MainForm_SearchQueryTooShort = 'Search query too short. Please enter at least 2 characters.';
 MainForm_NoFavorites = 'No files flagged with this marker.';
 // DummyFile for browsing Playlists/Webradio
@@ -693,6 +688,11 @@ MediaLibrary_RefreshingFilesCompleteFinished = 'Refreshing files complete.';
 
 MediaLibrary_ScanningFilesInDir    = 'Reading file information ... %s';
 MediaLibrary_ScanningFilesCount    = 'Scanning music files for metadata ... %d/%d';
+
+MediaLibrary_ScanningPlaylistsInDir = 'Scanning playlists ... %s';
+MediaLibrary_ScanningPlaylistsCount = 'Scanning playlists files ... %d/%d';
+
+
 //ProgressForm_ScanNewFiles    = 'Nemp is Scanning the new music files for meta data. This may take a while.';
 
 //MediaLibrary_SearchingMissingFiles   = 'Searching missing files (%d%%)';
@@ -777,9 +777,9 @@ Medialibrary_LoadingFile             = 'Loading media library (%s)';
 Medialibrary_InvalidLibFile          = 'Invalid media library-file.';
 Medialibrary_LibFileTooYoung         = 'The media library was probably created by a newer version of Nemp. This version of Nemp doesn''t know how to read this file.';
 Medialibrary_LibFileTooOld           = 'Media library of Nemp 2.4 or earlier detected. This is not supported any more.';
-Medialibrary_OldFileHint        = 'You are loading a media library of an earlier version of Nemp. Please connect all relevant drives to your computer before you proceed. '
-                                 + 'Otherwise some files will be deleted from the library.';
-Medialibrary_OldFileHint2       = 'Some problems occured while converting the old library and some audiofiles were ignored. You should rebuild it by searching your harddrives for new files.';
+//Medialibrary_OldFileHint        = 'You are loading a media library of an earlier version of Nemp. Please connect all relevant drives to your computer before you proceed. '
+//                                 + 'Otherwise some files will be deleted from the library.';
+//Medialibrary_OldFileHint2       = 'Some problems occured while converting the old library and some audiofiles were ignored. You should rebuild it by searching your harddrives for new files.';
 
 Medialibrary_SaveException1 = 'An error occured while saving the media library. Please report this error.';
 //Medialibrary_SaveException = 'Saving failed. Probably the directory is write protected or there is not enough available free space.';
@@ -795,6 +795,8 @@ Medialibrary_DriveRepairError = 'An Error occured while updating drivelist. Plea
 Medialibrary_DialogFilter            = 'Nemp media library';
 Medialibrary_AddingPlaylist          = 'Adding the playlist to the media library...';
 MediaLibrary_CSVFilter               = 'CSV files';
+MediaLibrary_HTMLFilter              = 'HTML files';
+MediaLibrary_AnyFileFilter           = 'files';
 
 MediaLibrary_OutOfMemoryAccelerateSearchReduced       = 'Not enough memory. The settings for the accelerated search have been reduced to a minimum.';
 MediaLibrary_OutOfMemoryAccelerateSearchDisabled      = 'Not enough memory. Accelerated search has been disabled.';
@@ -809,6 +811,8 @@ MediaLibrary_OutOfMemoryBuildingLyricStringError      = 'An error occurred while
     Playlist_NotEverything        = 'No. Nemp will not add *everything* to the playlist.';
     Playlist_FileNotFound         = 'The specified file can not be found. Do you want to delete it from the list?';
     Playlist_NoRecentlists        = 'empty';
+
+    Playlist_QueryTooManyFiles = 'Do you really want to add all %d titles to the playlist? Click "No" to add only the selected titles.';
 
 
 Player_FilenameWebradioTooLong = 'The filename for this stream is to long and automatic abbreviation failed.' +#13#10
@@ -873,21 +877,22 @@ Progressform_ReplayGain_AlreadyRunning = 'ReplayGain calculation is already runn
 
     AutoScanDirsDialog_ShowAgain = 'Save selection and do not show this dialog again.';
 
-Shoutcast_Error_ConnectionFailed = 'Connection failed. Please check your internet configuration.';
+// Shoutcast_Error_ConnectionFailed = 'Connection failed. Please check your internet configuration.';
 Shoutcast_Error_DownloadFailed = 'Download failed. If the stream is available in other players, disable the parsing of the playlist in the settings dialog and try again.';
 Shoutcast_Connecting = 'Connecting to shoutcast.com ...';
 Shoutcast_Connecting_MainForm = 'Connecting...';
-Shoutcast_Downloading = 'Downloading stationlist...';
-Shoutcast_ParsingXMLData = 'Download complete. Parsing XML-Data...';
-Shoutcast_DownloadingPlaylist = 'Downloading playlist...';
+// Shoutcast_Downloading = 'Downloading stationlist...';
+// Shoutcast_ParsingXMLData = 'Download complete. Parsing XML-Data...';
+// Shoutcast_DownloadingPlaylist = 'Downloading playlist...';
 Shoutcast_DownloadComplete = 'Download complete.';
 Shoutcast_OK     = 'OK';
 Shoutcast_Cancel = 'Cancel';
-Shoutcast_MainForm_BibError = 'Cannot find station data. This should not happen.';
+//Shoutcast_MainForm_BibError = 'Cannot find station data. This should not happen.';
 Shoutcast_UnknownFormat = 'Unknown format';
+Shoutcast_DisplayErrorMessage = 'Error: %s';
 
-Shoutcast_InputStreamCaption = 'Nemp: Play Webstream';
-Shoutcast_InputStreamLabel   = 'URL (e.g. "http://myhits.com/tune_in.pls" or "http://123.12.34.56:5000")';
+// Shoutcast_InputStreamCaption = 'Nemp: Play Webstream';
+// Shoutcast_InputStreamLabel   = 'URL (e.g. "http://myhits.com/tune_in.pls" or "http://123.12.34.56:5000")';
 
 TabBtnBrowse_OriginalHint = 'Browse your media library through a tree view';
 TabBtnCoverFlow_OriginalHint = 'Browse your media library through a coverflow';
@@ -1059,6 +1064,7 @@ ProgressForm_SearchTags     = 'Nemp is searching for some additional tags for yo
 ProgressForm_UpdateMetaData = 'Nemp is updating the meta data (ID3tags) of your music files.';
 ProgressForm_DeleteFiles    = 'Nemp is removing the selected files from your media library.';
 ProgressForm_ScanNewFiles    = 'Nemp is scanning the new music files for metadata. This may take a while.';
+ProgressForm_ScanNewPlaylistFiles = 'Nemp is scanning the new playlist files. This may take a while.';
 
 ProgressForm_WorkingCaption = 'Nemp: Work in progress ...';
 ProgressForm_CompleteCaption = 'Nemp: Process completed.';
@@ -1095,6 +1101,7 @@ PlaylistManager_ReloadPlaylist = 'The current playlist "%s" has been changed sin
 //                                 + 'Do you want to save it now and switch to the default playlist?';
 
 PlaylistManager_PlaylistNoFound = 'The playlist file could not be found.';
+PlaylistManager_BibPlaylistNoFound = 'The playlist file "%s" could not be found.';
 
 PlaylistManager_DeleteFavorite = 'This will delete the playlist "%s" from your favorites. This cannot be undone.' +#13#10 + #13#10
                                 + 'Are you sure you want to delete the list?';
@@ -1174,24 +1181,16 @@ LibConfigHint_LayerMain = 'Layer %s';
 LibConfigHint_LayerSorting = 'Sorted by: ';
 LibConfigText_LayerSortedBy = '%s (by %s)';
 
-//function MainVSTEmptyMessage(state: Integer): String;
+ExportFailed_CurrentCategory = 'The current category doesn''t contain audio files, but Playlists or Webradio. Export is not possible.';
+ExportFailed_Unknown = 'The export failed for an unexpected reason.';
+ExportSucceeded = 'Export complete. Do you want to open the file now?';
+ExportNewTemplateCaption = 'Export: New template';
+ExportNewTemplatePrompt = 'Please enter a name for the new template';
+ExportDeleteTemplateConfirmation = 'Do you really want to delete the template "%s"?';
+ExportDeleteTemplateFailed = 'The template could not be deleted.';
+
 
 implementation
 
-(*
-function MainVSTEmptyMessage(state: Integer): String;
-begin
-  case state of
-    0: result := ;
-    1: result := ;
-    2: result := ;
-    3: result := ;
-    4: result := ;
-    5: result := ;
-
-
-  end;
-
-end*)
 
 end.

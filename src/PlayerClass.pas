@@ -34,12 +34,13 @@ unit PlayerClass;
 
 interface
 
-uses  Windows, Classes,  Controls, StdCtrls, ExtCtrls, Buttons, SysUtils, Contnrs,
+uses  Windows, Classes,  Controls, StdCtrls, ExtCtrls, Buttons, SysUtils, Contnrs, System.StrUtils,
       ShellApi, IniFiles, Dialogs, Graphics, cddaUtils, math, CoverHelper,
       bass, bass_fx, basscd, spectrum_vis, DateUtils, bassmidi,
       NempAudioFiles,  Nemp_ConstantsAndTypes, NempAPI, ShoutCastUtils, PostProcessorUtils,
       Hilfsfunktionen, gnuGettext, Nemp_RessourceStrings, OneINst,
-      Easteregg, ScrobblerUtils, CustomizedScrobbler, SilenceDetection, System.UITypes;
+      Easteregg, ScrobblerUtils, CustomizedScrobbler, SilenceDetection, System.UITypes,
+      mmSystem, System.WideStrUtils;
 
 const USER_WANT_PLAY = 1;
       USER_WANT_STOP = 2;
@@ -227,6 +228,7 @@ type
       procedure SetAutoSplitMaxSize(Value: Integer);  // Split size for webstream recording
       function GetFloatable: Boolean;
 
+
       procedure GetURLDetails;  // Get Data from a webstream and set syncs for Meta-information
 
       // ResetPlayerVCL: Send a Message to the main window to restore some buttons (rewind-button)
@@ -265,6 +267,7 @@ type
 
         MainStreamIsReverseStream: Boolean;
         MainStreamIsTempoStream: Boolean;
+        MainAudioFileIsLiveRecording: Boolean;
 
         ///  MainAudioFileIsPresentAndPlaying:
         ///  Used for Playlist.AutoDelete - FileNotFound-entries in the
@@ -291,13 +294,18 @@ type
         IgnoreFadingOnShortTracks: Boolean;
         IgnoreFadingOnPause: Boolean;
         IgnoreFadingOnStop: Boolean;
+        IgnoreFadingOnLiveRecordings: Boolean;
+        LiveRecordingCheckTitle: Boolean;
+        LiveRecordingCheckAlbum: Boolean;
+        LiveRecordingCheckTags: Boolean;
+        LiveRecordingCheckIdentifier: String;
 
         UseDefaultEffects: Boolean;
         UseDefaultEqualizer: Boolean;
         PlayBufferSize: DWORD;
 
         UseVisualization: Boolean;
-        VisualizationInterval: Integer;
+        VisualizationInterval: Cardinal;
 
         TimeMode: Byte;
         ScrollTaskbarTitel: Boolean;
@@ -514,7 +522,7 @@ type
         function DrawPreview( DestWidth : Integer; DestHeight : Integer;
                             SkinActive : Boolean = True) : HBITMAP;
 
-        procedure DrawPreviewNew( DestWidth : Integer; DestHeight : Integer;
+        procedure DrawPreviewNew(DestHeight : Integer; DestWidth : Integer;
                             destBitmap: TBitmap; SkinActive : Boolean = True);
 
         procedure SetCueSyncs;
@@ -542,8 +550,6 @@ type
 
         Procedure SetEqualizer(band: Integer; gain: Single);
 
-        //procedure ReadBirthdayOptions(aIniFilename: UnicodeString);
-        //procedure WriteBirthdayOptions(aIniFilename: UnicodeString);
         function GetCountDownLength(aFilename: UnicodeString): Integer;
         procedure PauseForBirthday; // the same as nomale pause, but force fading
         Procedure PlayCountDown; // Countdown abspielen mit setzen der Syncs
@@ -568,9 +574,15 @@ type
         function StartPauseBetweenTracksTimer: Boolean;
 
         function SwapStreams(ScannedFile: TAudioFile): Integer;
+
+        function ProcessNewMetaData(MetaDataType: Integer; newMetaData: LParam): Boolean;
+        function FinishBuffering: Boolean;
+        function GetBufferProgress: Integer;
   end;
 
-var CSPrescanList: RTL_CRITICAL_SECTION;
+var
+  CSPrescanList: RTL_CRITICAL_SECTION;
+  FBufferTimerId: DWORD = 0;
 
 
 Const
@@ -595,10 +607,14 @@ begin
   // If this is called, the file is on its end.
   aPlayer.EndFileProcReached := True;
 
-  if aPlayer.DoPauseBetweenTracks then
-    SendMessage(aPlayer.MainWindowHandle, WM_PrepareNextFile, 0, 0)
-  else
-    SendMessage(aPlayer.MainWindowHandle, WM_NextFile, 0, 0);
+  if assigned(aPlayer.MainAudioFile) and (aPlayer.MainAudioFile.isStream) then
+    SendMessage(aPlayer.MainWindowHandle, WM_PlayerPlayAgain, 0, 0)
+  else begin
+    if aPlayer.DoPauseBetweenTracks then
+      SendMessage(aPlayer.MainWindowHandle, WM_PrepareNextFile, 0, 0)
+    else
+      SendMessage(aPlayer.MainWindowHandle, WM_NextFile, 0, 0);
+  end;
 end;
 
 procedure EndHeadSetFileProc(handle: HWND; Channel, Data: DWord; User: Pointer); stdcall;
@@ -644,85 +660,83 @@ begin
     SendMessage(TNempPlayer(User).MainWindowHandle, WM_BIRThDAY_FINISH, 0, 0);
 end;
 
+procedure CheckBufferCallback(uID, uMsg: Cardinal; dwUser, dw1, dw2: DWord); stdcall;
+begin
+  SendMessage(TNempPlayer(dwUser).MainWindowHandle, WM_WebRadio, wWebRadioBuffering, 0);
+end;
+
+procedure DoStall(handle: HWND; Channel, Data: DWord; User: Pointer); stdcall;
+begin
+  if (data = 0) then // stalled
+    FBufferTimerId := TimeSetEvent(25, 10, @CheckBufferCallback, NativeUInt(User), TIME_PERIODIC);
+end;
+
 procedure DoMeta(handle: HWND; Channel, Data: DWord; User: Pointer); stdcall;
 var
-  p: Integer;
-  newStreamMetadata: String;
-  newDataReceived: Boolean;
+  ShoutCastData, OggData: PAnsiChar;
 begin
-  newStreamMetadata := String(BASS_ChannelGetTags(channel, BASS_TAG_META));
-  newDataReceived := newStreamMetadata <> TNempPlayer(User).fCurrentStreamMetadata;
-  // DetectUTF8Encoding ?? somehow ?
-
-  if (newStreamMetadata <> '') AND (TNempPlayer(User).MainAudioFile <> NIL) then
-  begin
-        p := Pos('StreamTitle=', newStreamMetadata);
-        if (p > 0) then
-        begin
-              p := p + 13;
-              TNempPlayer(User).MainAudioFile.Titel := Copy(newStreamMetadata, p, Pos(';', newStreamMetadata) - p - 1);
-        end;
-
-        if TNempPlayer(User).StreamRecording
-            AND newDataReceived
-            AND TNempPlayer(User).AutoSplitByTitle
-        then
-            TNempPlayer(User).StartRecording;
-
-        if newDataReceived then
-            TNempPlayer(User).fCurrentStreamMetadata := newStreamMetadata;
-
-        SendMessage(TNempPlayer(User).MainWindowHandle, WM_NewMetaData, 0, 0);
+  ShoutCastData := BASS_ChannelGetTags(channel, BASS_TAG_META);
+  if ShoutCastData <> nil then begin
+    SendMessage(TNempPlayer(User).MainWindowHandle, WM_WebRadio, wWebRadioNewMetaData, LParam(ShoutCastData));
+  end else begin
+    OggData := BASS_ChannelGetTags(channel, BASS_TAG_OGG);
+    if OggData <> nil then
+      SendMessage(TNempPlayer(User).MainWindowHandle, WM_WebRadio, wWebRadioNewMetaDataOgg, LParam(OggData));
   end;
 end;
 
-procedure DoOggMeta(handle: HWND; Channel, Data: DWord; User: Pointer); stdcall;
+function TNempPlayer.ProcessNewMetaData(MetaDataType: Integer; newMetaData: LParam): Boolean;
 var
-  meta: PAnsiChar;
-  metaStr: String;
-  newStreamMetadata: String;
+  POggLines: PAnsiChar;
+  OggLine: String;
   newDataReceived: Boolean;
+  p: Integer;
+  ProcessedNewMetaData: String;
 begin
-  newStreamMetadata := ''; // Concatenation of all the 0-terminated metaStr
-
-  meta := BASS_ChannelGetTags(channel, BASS_TAG_OGG);
-
-  if (meta <> nil) AND (TNempPlayer(User).MainAudioFile <> NIL) then
-  begin
-      // nach Ogg-Daten suchen
-      if (meta <> nil) then
-          try
-              while (meta^ <> #0) do
-              begin
-                  metaStr := String(meta);
-                  newStreamMetadata := newStreamMetadata + metaStr;
-                  if (AnsiUppercase(Copy(metaStr, 1, 7)) = 'ARTIST=') then
-                  begin
-                    TNempPlayer(User).MainAudioFile.Artist := Copy(metaStr, 8, Length(metaStr) - 7);
-                  end else
-                    if (AnsiUppercase(Copy(metaStr,1,6)) = 'TITLE=') then
-                    begin
-                      TNempPlayer(User).MainAudioFile.Titel := trim(Copy(metaStr, 7, Length(metaStr) - 6 ));
-                    end;
-                  meta := meta + Length(meta) + 1;
-              end;
-          except
-            // Wenn was schief gelaufen ist: Dann gibts halt keine Tags...
-          end;
-
-      newDataReceived := newStreamMetadata <> TNempPlayer(User).fCurrentStreamMetadata;
-
-      if TNempPlayer(User).StreamRecording
-          AND newDataReceived
-          AND TNempPlayer(User).AutoSplitByTitle
-      then
-          TNempPlayer(User).StartRecording;
-
-      if newDataReceived then
-          TNempPlayer(User).fCurrentStreamMetadata := newStreamMetadata;
-
-      SendMessage(TNempPlayer(User).MainWindowHandle, WM_NewMetaData, 0, 0);
+  result := False;
+  newDataReceived := False;
+  case MetaDataType of
+    wWebRadioNewMetaData: begin
+      if IsUTf8String(RawByteString(PAnsiChar(newMetaData))) then
+        ProcessedNewMetaData := UTF8ToString(PAnsiChar(newMetaData))
+      else
+        ProcessedNewMetaData := String(PAnsiChar(newMetaData));
+      newDataReceived := ProcessedNewMetaData <> fCurrentStreamMetadata;
+      if (ProcessedNewMetaData <> '') AND (MainAudioFile <> NIL) then begin
+        p := Pos('StreamTitle=', ProcessedNewMetaData);
+        if (p > 0) then
+          MainAudioFile.Titel := Copy(ProcessedNewMetaData, p+13, Pos(';', ProcessedNewMetaData) - (p+13) - 1);
+      end;
+      result := newDataReceived;
+    end;
+    wWebRadioNewMetaDataOgg: begin
+      POggLines := PAnsiChar(newMetaData);
+      ProcessedNewMetaData := '';
+      try
+        while (POggLines^ <> #0) do begin
+          OggLine := String(UTF8String(POggLines));
+          ProcessedNewMetaData := ProcessedNewMetaData + OggLine;
+          if AnsiStartsText('artist=', OggLine) then
+            MainAudioFile.Artist := Copy(OggLine, 8, Length(OggLine) - 7)
+          else
+            if AnsiStartsText('title=', OggLine) then
+              MainAudioFile.Titel := trim(Copy(OggLine, 7, Length(OggLine) - 6));
+          POggLines := POggLines + Length(POggLines) + 1;
+        end;
+      except
+        // no valid data
+      end;
+      newDataReceived := ProcessedNewMetaData <> fCurrentStreamMetadata;
+      result := newDataReceived;
+    end;
+  else
+    ; // nothing to do, unkown data
   end;
+
+  if StreamRecording AND newDataReceived AND AutoSplitByTitle then
+    StartRecording;
+  if newDataReceived then
+    fCurrentStreamMetadata := ProcessedNewMetaData;
 end;
 
 
@@ -872,16 +886,19 @@ end;
 
 procedure TNempPlayer.SetSoundFont(aFilename: String);
 var NewSoundfont  : BASS_MIDI_FONT;
+  PNewSoundfont  : PBASS_MIDI_FONT;
 begin
+
     NewSoundfont.font := BASS_MIDI_FontInit(PChar(aFilename), BASS_UNICODE);  // open new soundfont
     if (NewSoundfont.font <> 0) and (NewSoundfont.font <> fSoundfont) then
     begin
         NewSoundfont.preset := -1;                                  // use all presets
         NewSoundfont.bank   := 0;                                   // use default bank(s)
+        PNewSoundfont := @NewSoundfont;
         BASS_MIDI_FontFree(fSoundfont);                             // free old soundfont
-        BASS_MIDI_StreamSetFonts(0, NewSoundfont, 1);               // set default soundfont
-        BASS_MIDI_StreamSetFonts(MainStream, NewSoundfont, 1);      // set for current stream too
-        BASS_MIDI_StreamSetFonts(SlideStream, NewSoundfont, 1);
+        BASS_MIDI_StreamSetFonts(0, PNewSoundfont, 1);               // set default soundfont
+        BASS_MIDI_StreamSetFonts(MainStream, PNewSoundfont, 1);      // set for current stream too
+        BASS_MIDI_StreamSetFonts(SlideStream, PNewSoundfont, 1);
         fSoundfont := NewSoundfont.font;
         fSoundfontFilename := aFilename;
     end;
@@ -896,6 +913,7 @@ var count: LongWord;
     tmpfilter: String;
     BassInfo: BASS_DEVICEINFO;
     sf  : BASS_MIDI_FONT;
+    psf  : PBASS_MIDI_FONT;
 
     procedure ProcessPLugin(aPlug: Dword);
     var Info: PBass_PluginInfo;
@@ -939,6 +957,10 @@ begin
     BASS_SetConfig(BASS_CONFIG_NET_PLAYLIST, 1);
     BASS_SetConfig(BASS_CONFIG_DEV_DEFAULT, 1);
 
+
+
+
+
     if NOT BASS_Init(MainDevice, 44100, 0, HND, nil) then
     begin
       // zweiter Versuch, Standard-Device öffnen
@@ -965,7 +987,8 @@ begin
         HeadsetDevice := MainDevice;
 
     // Init SoundFonts for MIDI
-    if (BASS_MIDI_StreamGetFonts(0, sf, 1) >= 1) then
+    psf := @sf;
+    if (BASS_MIDI_StreamGetFonts(0, psf, 1) >= 1) then
         fSoundfont  := sf.font
     else
     begin
@@ -981,10 +1004,12 @@ begin
 
     BASS_SetConfigPtr(BASS_CONFIG_NET_AGENT or BASS_UNICODE, PChar(Nemp_BassUserAgent));
     BASS_SetConfig(BASS_CONFIG_BUFFER, PlayBufferSize);
+    BASS_ApplyCDDBSettings(NempOptions.CDDBServer, NempOptions.CDDBEMail);
 
     // more stable Webradio? (2019) ---
-    BASS_SetConfig(BASS_CONFIG_NET_BUFFER, 10000);
+    BASS_SetConfig(BASS_CONFIG_NET_BUFFER, 5000);
     BASS_SetConfig(BASS_CONFIG_NET_READTIMEOUT, 2000);
+    BASS_SetConfig(BASS_CONFIG_NET_PREBUF, 90);
     // ---
 
     UpdateFlags;
@@ -1123,6 +1148,11 @@ begin
   IgnoreFadingOnShortTracks := NempSettingsManager.ReadBool('Player', 'IgnoreOnShortTracks', True);
   IgnoreFadingOnPause   := NempSettingsManager.ReadBool('Player', 'IgnoreOnPause', True);
   IgnoreFadingOnStop    := NempSettingsManager.ReadBool('Player', 'IgnoreOnStop', True);
+  IgnoreFadingOnLiveRecordings  := NempSettingsManager.ReadBool('Player', 'IgnoreFadingOnLiveRecordings', True);
+  LiveRecordingCheckTitle       := NempSettingsManager.ReadBool('Player', 'LiveRecordingCheckTitle', True);
+  LiveRecordingCheckAlbum       := NempSettingsManager.ReadBool('Player', 'LiveRecordingCheckAlbum', True);
+  LiveRecordingCheckTags        := NempSettingsManager.ReadBool('Player', 'LiveRecordingCheckTags', True);
+  LiveRecordingCheckIdentifier  := NempSettingsManager.ReadString('Player', 'LiveRecordingCheckIdentifier', 'live');
 
   DoSilenceDetection    := NempSettingsManager.ReadBool('Player', 'DoSilenceDetection', True);
   SilenceThreshold      := NempSettingsManager.ReadInteger('Player', 'SilenceThreshold', -40);
@@ -1240,6 +1270,12 @@ begin
   NempSettingsManager.WriteBool('Player', 'IgnoreOnShortTracks', IgnoreFadingOnShortTracks);
   NempSettingsManager.WriteBool('Player', 'IgnoreOnPause', IgnoreFadingOnPause);
   NempSettingsManager.WriteBool('Player', 'IgnoreOnStop', IgnoreFadingOnStop);
+
+  NempSettingsManager.WriteBool('Player', 'IgnoreFadingOnLiveRecordings', IgnoreFadingOnLiveRecordings);
+  NempSettingsManager.WriteBool('Player', 'LiveRecordingCheckTitle', LiveRecordingCheckTitle);
+  NempSettingsManager.WriteBool('Player', 'LiveRecordingCheckAlbum', LiveRecordingCheckAlbum);
+  NempSettingsManager.WriteBool('Player', 'LiveRecordingCheckTags', LiveRecordingCheckTags);
+  NempSettingsManager.WriteString('Player', 'LiveRecordingCheckIdentifier', LiveRecordingCheckIdentifier);
 
   NempSettingsManager.WriteBool('Player', 'DoSilenceDetection', DoSilenceDetection);
   NempSettingsManager.WriteInteger('Player', 'SilenceThreshold', SilenceThreshold);
@@ -1392,11 +1428,11 @@ begin
       end;
 
       at_Stream: begin
-          result := BASS_StreamCreateURL(PChar(Pointer(localPath)), 0, BASS_STREAM_STATUS or BASS_UNICODE , @StatusProc, nil);
+          result := BASS_StreamCreateURL(PChar(Pointer(localPath)), 0, BASS_STREAM_STATUS or BASS_UNICODE or BASS_STREAM_BLOCK, @StatusProc, nil);
       end;
 
       at_CDDA: begin
-          result := BASS_CD_StreamCreate(AudioDriveNumber(localPath), aFile.Track - 1, DecodeFlag or flags );
+          result := BASS_CD_StreamCreate(TCDDADrive.GetDriveNumber(localPath), aFile.Track - 1, DecodeFlag or flags );
           // Decodier-Stream nachbehandeln
           if aReverse AND (result <> 0) then
           begin
@@ -1520,6 +1556,7 @@ begin
           end;
       end;
 
+      (*
       if MainAudioFile.isCDDA then
       begin
           // check, whether the current cd is valid for the AudioFile-Object
@@ -1529,6 +1566,7 @@ begin
           if (CddbIDFromCDDA(MainAudioFile.Pfad) <> MainAudioFile.Comment ) then
               MainAudioFile.GetAudioData(MainAudioFile.Pfad, 0);
       end;
+      *)
 
       //CDChangeSuccess := True;
       //if JustCDChange then
@@ -1549,8 +1587,12 @@ begin
         else
             ScanMode := ps_None;
 
-
       // ScanMode := ps_Now;
+      MainAudioFileIsLiveRecording :=
+        (MainAudioFile.AudioType = at_File) and
+        (   (LiveRecordingCheckTitle and AnsiContainsText(MainAudioFile.Titel, LiveRecordingCheckIdentifier)) or
+            (LiveRecordingCheckAlbum and AnsiContainsText(MainAudioFile.Album, LiveRecordingCheckIdentifier)) or
+            (LiveRecordingCheckTags and MainAudioFile.ContainsTag(LiveRecordingCheckIdentifier)));
 
       Mainstream := NEMP_CreateStream(MainAudioFile, AvoidMickyMausEffect, False, ScanMode, True);
 
@@ -1561,6 +1603,9 @@ begin
               fOnMessage(Self, BassErrorString(Bass_ErrorGetCode));
           // something is wrong
           MainAudioFileIsPresentAndPlaying := False;
+          // to display the error more permanently in PlayerControl and Playlist
+          if MainAudioFile.isStream then
+            MainAudioFile.Description := Format(Shoutcast_DisplayErrorMessage, [BassErrorString(Bass_ErrorGetCode)])
       end;
 
       SetEndSyncs(mainstream);
@@ -1579,11 +1624,13 @@ begin
               fIsURLStream := False;
               aAudioFile.FileIsPresent := FileExists(MainAudioFile.Pfad);
               MainStreamIsTempoStream := AvoidMickyMausEffect;
+              MainStreamIsReverseStream := False;
 
               // Bestimmen, ob Faden oder nicht
               if UseFading AND fReallyUseFading
                            // (...Und Titel ist auch lang genug)
                            AND NOT (IgnoreFadingOnShortTracks AND (Bass_ChannelBytes2Seconds(MainStream,Bass_ChannelGetLength(MainStream, BASS_POS_BYTE)) < FadingInterval DIV 200))
+                           AND NOT (IgnoreFadingOnLiveRecordings and MainAudioFileIsLiveRecording)
               then // zunächst stummschalten, und dann einfaden
               begin
                     // Attribute setzen
@@ -1616,7 +1663,7 @@ begin
                     if StartPlay then
                       BASS_ChannelPlay(MainStream , False);
               end;
-              MainStreamIsReverseStream := False;
+
 
               // Anzeige initialisieren
               StreamType := GetStreamType(Mainstream);
@@ -1648,8 +1695,9 @@ begin
               fIsURLStream := True;
               MainStreamIsReverseStream := False;
 
-              // Stratplay künstlich auf True setzen!
-              // StartPlay := True;          // why ?????
+              BASS_ChannelSetSync(MainStream, BASS_SYNC_META, 0, @DoMeta, self);
+              BASS_ChannelSetSync(MainStream, BASS_SYNC_OGG_CHANGE, 0, @DoMeta, self);
+              BASS_ChannelSetSync(MainStream, BASS_SYNC_STALL, 0, @DoStall, self);
 
               // Wenn Faden
               if UseFading AND fReallyUseFading then
@@ -1669,8 +1717,7 @@ begin
               end;
               fStatus := PLAYER_ISPLAYING;
 
-              // Hier werden die Details ermittelt, Die Hauptform benachrichtigt
-              // und MetaSyncs gesetzt, Playingtitel wird da auch gesetzt
+              // geturlDetails: ggf. überarbeiten (2023)
               GetURLDetails;
           end;
 
@@ -1736,7 +1783,8 @@ begin
 
       SetCueSyncs;
       // wurde direkt nach der Erzeugung gemacht SetEndSyncs;
-      SetSlideEndSyncs;
+      if not MainAudioFile.IsStream then
+        SetSlideEndSyncs;
 
       // get the cover for the currently playing file
       CoverIsLoaded := RefreshCoverBitmap;
@@ -2799,6 +2847,7 @@ end;
 
 procedure TNempPlayer.SetEndSyncs(Dest: DWord);
 var silencepos, syncposFading: LongWord;
+  tmpEnd, tmpNearEnd, tmpSilenceStart: Cardinal;
 begin
 
     // ruhig die Dauer des mainstreams nehmen - sonst is eh was verkehrt ;-)
@@ -2813,9 +2862,47 @@ begin
         silencepos := 0;
     end;
 
+    tmpNearEnd := 0;
+    tmpSilenceStart := 0;
+    BASS_ChannelRemoveSync(Dest, fFileEndSyncHandleM);
+    BASS_ChannelRemoveSync(Dest, fFileNearEndSyncHandleM);
+    BASS_ChannelRemoveSync(Dest, fFileNearEndSyncHandleS);
+    BASS_ChannelRemoveSync(Dest, fFileEndSyncHandleS);
+    BASS_ChannelRemoveSync(Dest, fSilenceBeginSyncHandleM);
+    BASS_ChannelRemoveSync(Dest, fSilenceBeginSyncHandleS);
+    if UseFading And fReallyUsefading
+          AND NOT (IgnoreFadingOnShortTracks AND (Dauer < FadingInterval DIV 200))
+          AND NOT (IgnoreFadingOnLiveRecordings and MainAudioFileIsLiveRecording)
+          AND (Not MainStreamIsReverseStream)
+    then
+        tmpNearEnd := Bass_ChannelSetSync(Dest, BASS_SYNC_POS, syncposFading, @EndFileProc, Self)
+    else
+    begin
+      // no fading, so set sync at the beginning of silence (if detected)
+      if fSilenceDetected then
+        tmpSilenceStart := Bass_ChannelSetSync(Dest, BASS_SYNC_POS, silencepos, @EndFileProc, Self)
+    end;
+
+    // End-Sync: Always
+    tmpEnd := Bass_ChannelSetSync(Dest, BASS_SYNC_END, 0, @EndFileProc, Self);
+
+    // tmpEnd, tmpNearEnd, tmpSilenceStart: Cardinal;
+    if dest = Mainstream then begin
+      fFileNearEndSyncHandleM := IfThen(tmpNearEnd > 0, tmpNearEnd);
+      fSilenceBeginSyncHandleM := IfThen(tmpSilenceStart > 0, tmpSilenceStart);
+      fFileEndSyncHandleM := IfThen(tmpEnd > 0, tmpEnd);
+    end else
+    begin
+      fFileNearEndSyncHandleS := IfThen(tmpNearEnd > 0, tmpNearEnd);
+      fSilenceBeginSyncHandleS := IfThen(tmpSilenceStart > 0, tmpSilenceStart);
+      fFileEndSyncHandleS := IfThen(tmpEnd > 0, tmpEnd);
+    end;
+
+
+     (*
     if dest = Mainstream then
     begin
-          BASS_ChannelRemoveSync(MainStream, fFileEndSyncHandleM); //then
+         BASS_ChannelRemoveSync(MainStream, fFileEndSyncHandleM); //then
           BASS_ChannelRemoveSync(MainStream, fFileNearEndSyncHandleM);
           BASS_ChannelRemoveSync(MainStream, fFileNearEndSyncHandleS);
           BASS_ChannelRemoveSync(MainStream, fFileEndSyncHandleS);
@@ -2849,6 +2936,7 @@ begin
           BASS_ChannelRemoveSync(SlideStream, fFileEndSyncHandleS);
           BASS_ChannelRemoveSync(SlideStream, fSilenceBeginSyncHandleM);
           BASS_ChannelRemoveSync(SlideStream, fSilenceBeginSyncHandleS);
+
           // Sync im SlideStream setzen
           if UseFading And fReallyUsefading
               AND (Dauer > FadingInterval DIV 200)
@@ -2869,38 +2957,34 @@ begin
           fFileEndSyncHandleS := Bass_ChannelSetSync(SlideStream,
                     BASS_SYNC_END, 0,
                     @EndFileProc, Self);
-    end;
+    end;   *)
+
     SendMessage(MainWindowHandle, WM_ChangeStopBtn, 0, 0);
     fStopStatus := PLAYER_STOP_NORMAL
 end;
 
 procedure TNempPlayer.SetNoEndSyncs(Dest: DWord);
 begin
-    if dest = Mainstream then
-    begin
-          BASS_ChannelRemoveSync(MainStream, fFileEndSyncHandleM); //then
-          BASS_ChannelRemoveSync(MainStream, fFileNearEndSyncHandleM);
-          BASS_ChannelRemoveSync(MainStream, fFileNearEndSyncHandleS);
-          BASS_ChannelRemoveSync(MainStream, fFileEndSyncHandleS);
-          BASS_ChannelRemoveSync(MainStream, fSilenceBeginSyncHandleM);
-          BASS_ChannelRemoveSync(MainStream, fSilenceBeginSyncHandleS);
-          // Sync im Mainstream setzen
-          fFileEndSyncHandleM := Bass_ChannelSetSync(MainStream,
-                    BASS_SYNC_END, 0,
-                    @StopPlaylistProc, Self);
-    end
-    else begin
-          BASS_ChannelRemoveSync(SlideStream, fFileNearEndSyncHandleM);
-          BASS_ChannelRemoveSync(SlideStream, fFileEndSyncHandleM);
-          BASS_ChannelRemoveSync(SlideStream, fFileNearEndSyncHandleS);
-          BASS_ChannelRemoveSync(SlideStream, fFileEndSyncHandleS);
-          BASS_ChannelRemoveSync(SlideStream, fSilenceBeginSyncHandleM);
-          BASS_ChannelRemoveSync(SlideStream, fSilenceBeginSyncHandleS);
-         // Sync im SlideStream setzen
-         fFileEndSyncHandleS := Bass_ChannelSetSync(SlideStream,
-                    BASS_SYNC_END, 0,
-                    @StopPlaylistProc, Self);
-    end;
+  BASS_ChannelRemoveSync(Dest, fFileEndSyncHandleM);
+  BASS_ChannelRemoveSync(Dest, fFileNearEndSyncHandleM);
+  BASS_ChannelRemoveSync(Dest, fFileNearEndSyncHandleS);
+  BASS_ChannelRemoveSync(Dest, fFileEndSyncHandleS);
+  BASS_ChannelRemoveSync(Dest, fSilenceBeginSyncHandleM);
+  BASS_ChannelRemoveSync(Dest, fSilenceBeginSyncHandleS);
+
+  if dest = Mainstream then
+  begin
+        // Sync im Mainstream setzen
+        fFileEndSyncHandleM := Bass_ChannelSetSync(MainStream,
+                  BASS_SYNC_END, 0,
+                  @StopPlaylistProc, Self);
+  end
+  else begin
+       // Sync im SlideStream setzen
+       fFileEndSyncHandleS := Bass_ChannelSetSync(SlideStream,
+                  BASS_SYNC_END, 0,
+                  @StopPlaylistProc, Self);
+  end;
     SendMessage(MainWindowHandle, WM_ChangeStopBtn, 1, 0);
     fStopStatus := PLAYER_STOP_AFTERTITLE;
 end;
@@ -3206,6 +3290,24 @@ begin
   end;
 end;
 
+function TNempPlayer.FinishBuffering: Boolean;
+begin
+  result := (BASS_ChannelIsActive(MainStream) = BASS_ACTIVE_PLAYING);
+  if result then begin
+    timeKillEvent(FBufferTimerId); // finished buffering, stop monitoring
+    GetURLDetails;
+  end
+end;
+
+function TNempPlayer.GetBufferProgress: Integer;
+begin
+  if BASS_StreamGetFilePosition(MainStream, BASS_FILEPOS_BUFFERING) > 0 then
+    // this check will prevent that the Buffer display do not start with 100
+    result := 100 - Integer(BASS_StreamGetFilePosition(MainStream, BASS_FILEPOS_BUFFERING))
+  else
+    result := 0;
+end;
+
 procedure TNempPlayer.GetURLDetails;
 var
   icy: PAnsiChar;
@@ -3243,10 +3345,7 @@ begin
       end;
 
      DoMeta(0, Mainstream, 0, self);
-     BASS_ChannelSetSync(MainStream, BASS_SYNC_META, 0, @DoMeta, self);
 
-     DoOggMeta(0, Mainstream, 0, self);
-     BASS_ChannelSetSync(MainStream, BASS_SYNC_OGG_CHANGE, 0, @DoOggMeta, self);
 
     StreamType := GetStreamType(MainStream);
   end;
@@ -3376,7 +3475,7 @@ begin
     }
 end;
 
-procedure TNempPlayer.DrawPreviewNew( DestWidth : Integer; DestHeight : Integer;
+procedure TNempPlayer.DrawPreviewNew(DestHeight : Integer; DestWidth : Integer;
                             destBitmap: TBitmap; SkinActive : Boolean = True);
 var
   h,pw  : Integer;
@@ -3384,8 +3483,8 @@ var
   r: TRect;
 begin
 
-        destBitmap.Width := 200; // DestWidth; // 200;
-        destBitmap.Height := 100; // DestHeight; // 100;
+        destBitmap.Width := DestWidth; // 200;
+        destBitmap.Height := DestHeight; // 100;
 
         destBitmap.PixelFormat := pf32bit;
 
@@ -3666,56 +3765,6 @@ begin
   SendMessage(MainWindowHandle, WM_ActualizePlayPauseBtn, wParam, lParam);
 end;
 
- (*
-{
-    --------------------------------------------------------
-    Birthday-settings
-    --------------------------------------------------------
-}
-procedure TNempPlayer.WriteBirthdayOptions(aIniFilename: UnicodeString);
-var ini: TMemIniFile;
-begin
-    EXIT ;
-    ini := TMeminiFile.Create(aIniFilename, TEncoding.UTF8);
-    try
-        ini.Encoding := TEncoding.UTF8;
-        Ini.WriteBool('Event', 'UseCountDown', NempBirthdayTimer.UseCountDown);
-        Ini.WriteTime('Event', 'StartTime'            , NempBirthdayTimer.StartTime);
-        // StartCountDownTime will be calculated when the event is activated
-        // Ini.WriteTime('Event', 'StartCountDownTime'   , NempBirthdayTimer.StartCountDownTime);
-        Ini.WriteString('Event', 'BirthdaySongFilename' , (NempBirthdayTimer.BirthdaySongFilename));
-        Ini.WriteString('Event', 'CountDownFileName'    , (NempBirthdayTimer.CountDownFileName));
-        Ini.WriteBool('Event', 'ContinueAfter'        , NempBirthdayTimer.ContinueAfter);
-        ini.Encoding := TEncoding.UTF8;
-        try
-            Ini.UpdateFile;
-        except
-            // Silent Exception
-        end;
-    finally
-      ini.Free
-    end;
-end;
-procedure TNempPlayer.ReadBirthdayOptions(aIniFilename: UnicodeString);
-var ini: TMemIniFile;
-begin
-  EXIT;
-    ini := TMeminiFile.Create(aIniFilename, TEncoding.UTF8);
-    try
-        ini.Encoding := TEncoding.UTF8;
-        NempBirthdayTimer.UseCountDown := Ini.ReadBool('Event', 'UseCountDown', True);
-        NempBirthdayTimer.StartTime := Ini.ReadTime('Event', 'StartTime', 0 );
-        // NempBirthdayTimer.StartCountDownTime := Ini.ReadTime('Event', 'StartCountDownTime',0);
-        NempBirthdayTimer.BirthdaySongFilename := (Ini.ReadString('Event', 'BirthdaySongFilename', ''));
-        NempBirthdayTimer.CountDownFileName := (Ini.ReadString('Event', 'CountDownFileName', ''));
-        NempBirthdayTimer.ContinueAfter :=Ini.ReadBool('Event', 'ContinueAfter', True);
-
-        showmessage(NempBirthdayTimer.BirthdaySongFilename);
-    finally
-      ini.Free
-    end;
-end;
-*)
 
 function TNempPlayer.GetCountDownLength(aFilename: UnicodeString): Integer;
 var tmpstream: DWord;
@@ -4095,8 +4144,6 @@ begin
                 aFile.Assign(aPlayer.fPrescanFiles[c-1]);
             aPlayer.fPrescanFiles.Clear;
             LeaveCriticalSection(CSPrescanList);
-
-            //sleep(2000);
 
             BASS_SetDevice(aPlayer.MainDevice);
 

@@ -56,6 +56,7 @@ type TWindowSection = (ws_none, ws_Library, ws_Playlist, ws_Controls);
     procedure HandleNewConnectedDrive;
 
     procedure FillTreeView(MP3Liste: TAudioFileList; AudioFile:TAudioFile);
+    procedure ClearTreeView;
     procedure RefreshPlaylistVSTHeader;
 
     function GetDropWindowSection(aControl: TWinControl): TWindowSection;
@@ -134,7 +135,7 @@ uses NempMainUnit, Splash, BibSearch, TreeHelper,  GnuGetText,
     PlayerLog, progressUnit, Hilfsfunktionen, EffectsAndEqualizer, MainFormBuilderForm,
     ReplayGainProgress, NewMetaFrame, WebQRCodes, PlaylistEditor, NewFavoritePlaylist,
     AudioDisplayUtils, PlaylistDuplicates, LibraryOrganizer.Configuration.NewLayer,
-    fChangeFileCategory, fConfigErrorDlg;
+    fChangeFileCategory, fConfigErrorDlg, fExport, fUpdateCleaning;
 
 procedure CorrectVolButton;
 begin
@@ -307,7 +308,8 @@ begin
 
         // testing 08.2017: Filling Label-Doubleclick-Search results (e.g.)
         if not assigned(AudioFile) then
-            AudioFile := MedienBib.CurrentAudioFile;
+            //AudioFile := MedienBib.CurrentAudioFile;
+            AudioFile := Nemp_MainForm.CurrentlySelectedFile;
 
         if (Not MedienBib.AnzeigeListIsCurrentlySorted) then
             VST.Header.SortColumn := -1
@@ -361,6 +363,11 @@ begin
 
         VST.EndUpdate;
     end;
+end;
+
+procedure ClearTreeView;
+begin
+  Nemp_MainForm.VST.Clear;
 end;
 
 procedure RefreshPlaylistVSTHeader;
@@ -691,7 +698,7 @@ begin
 
             ///  Swapping the mode may cause deleting temporary created Audiofiles from Playlists
             ///  If such a tmporary File was currently selected, it may result in access violations later. => Nil it.
-            MedienBib.CurrentAudioFile := Nil;
+            // MedienBib.CurrentAudioFile := Nil;
             MedienBib.RepairSearchStrings; // actually done only if needed
             case NewMode of
                 0,1,2: begin
@@ -1031,6 +1038,11 @@ begin
             ReTranslateComponent(FormChangeCategory);
             RestoreComboboxes(FormChangeCategory);
         end;
+        if assigned(FormExport) then
+          ReTranslateComponent(FormExport);
+
+        if assigned(FormUpdateCleaning) then
+          ReTranslateComponent(FormUpdateCleaning);
 
         // Categories
         ArtistsVST.Header.Columns[0].Text := TreeHeader_Categories;
@@ -1362,8 +1374,8 @@ begin
       // Target.Add(fDetails.CurrentAudioFile);
 
     // 4. The "currentfile" from the library (this is the one displayed in the VST-Details)
-    if NeededFile(Medienbib.CurrentAudioFile) then
-        Target.Add(MedienBib.CurrentAudioFile);
+    if NeededFile(Nemp_MainForm.CurrentlySelectedFile) then
+        Target.Add(Nemp_MainForm.CurrentlySelectedFile);
 
     // 5. Add files from the Playlist
     NempPlaylist.CollectFilesWithSameFilename(Original.Pfad, Target);
@@ -1460,8 +1472,8 @@ begin
     end;
 
     // ... VST-Details
-    if SameFile(MedienBib.CurrentAudioFile) then
-        Nemp_MainForm.ShowVSTDetails(MedienBib.CurrentAudioFile, -1);  // -1: Do not change Source (playlist/medienbib)) of audiofile
+    if SameFile(Nemp_MainForm.CurrentlySelectedFile) then
+        Nemp_MainForm.ShowVSTDetails(Nemp_MainForm.CurrentlySelectedFile, -1);  // -1: Do not change Source (playlist/medienbib)) of audiofile
 
     // ... Detail-Form
     if assigned(fDetails) and IncludeDetailForm then
@@ -1943,7 +1955,7 @@ begin
 end;
 
 procedure LoadStarGraphics(aRatingHelper: TRatingHelper);
-var s,h,u: TBitmap;
+var s,h,u,c: TBitmap;
     baseDir: String;
 
 begin
@@ -1951,6 +1963,8 @@ begin
   s := TBitmap.Create;
   h := TBitmap.Create;
   u := TBitmap.Create;
+  c := TBitmap.Create;
+
 
 
   if Nemp_MainForm.NempSkin.isActive
@@ -1967,16 +1981,19 @@ begin
       s.Transparent := True;
       h.Transparent := True;
       u.Transparent := True;
+      c.Transparent := True;
 
       Nemp_MainForm.NempSkin.LoadGraphicFromBaseName(s, BaseDir + 'starset')    ;
       Nemp_MainForm.NempSkin.LoadGraphicFromBaseName(h, BaseDir + 'starhalfset');
       Nemp_MainForm.NempSkin.LoadGraphicFromBaseName(u, BaseDir + 'starunset')  ;
+      Nemp_MainForm.NempSkin.LoadGraphicFromBaseName(c, BaseDir + 'starcount')  ;
 
-      aRatingHelper.SetStars(s,h,u);
+      aRatingHelper.SetStars(s,h,u,c);
   finally
       s.Free;
       h.Free;
       u.Free;
+      c.Free;
   end;
 end;
 

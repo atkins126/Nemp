@@ -447,6 +447,7 @@ type
 
         constructor Create;
         destructor Destroy; override;
+        procedure Clear;
 
         // Copy the data from aAudiofile
         procedure Assign(aAudioFile: TAudioFile);
@@ -454,6 +455,8 @@ type
         //   used for the webserver-copy of the MedienBib.
         //   Lyrics are not used in webserver but needs much place
         procedure AssignLight(aAudioFile: TAudioFile);
+
+        procedure AssignCDTrackData(TrackData: TCDTrackData);
 
         // Change the Driveletter from a file
         procedure SetNewDriveChar(aChar: Char);
@@ -522,9 +525,9 @@ type
 
         procedure GetAllTags(AutoTags, LastFMTags: TStringList);
 
-        procedure SetFlag(aFlag: Integer);
-        procedure UnSetFlag(aFlag: Integer);
-        function FlaggedWith(aFlag: Integer): Boolean;
+        procedure SetFlag(aFlag: Cardinal);
+        procedure UnSetFlag(aFlag: Cardinal);
+        function FlaggedWith(aFlag: Cardinal): Boolean;
 
         // creates a copy of the Audiofile and adds the copy to the list
         procedure AddCopyToList(aList: TAudioFileList);
@@ -824,6 +827,48 @@ begin
   inherited destroy;
 end;
 
+procedure TAudioFile.Clear;
+begin
+  if assigned(CueList) then
+    CueList.Clear;
+  
+  Description        := '';                               
+  fFileSize          := 0;                                
+  fFileAge           := 40300; 
+  Duration           := 0;
+  fBitrate           := 160;
+  fvbr               := false;
+  fChannelModeIDX    := 1;
+  fSamplerateIDX     := 7;                  
+  FileIsPresent      := True;                   
+  Titel              := '';                  
+  Artist             := '';                  
+  AlbumArtist        := '';                  
+  Composer           := '';                   
+  Album              := '';                   
+  Genre              := '';                  
+  Year               := '';                  
+  Track              := 0 ;                   
+  CD                 := '';                  
+  Comment            := '';
+  Lyrics             := '';
+  CoverID            := '';
+  Rating             := 0;
+  PlayCounter        := 0;
+  fAudioType         := at_File;
+  Pfad               := '';
+  RawTagLastFM       := '';
+  Favorite           := 0;
+  fCategory          := 0;
+  fBPM               := '';
+  TrackGain          := 0;
+  AlbumGain          := 0;
+  TrackPeak          := 1;
+  AlbumPeak          := 1;
+  ID3TagNeedsUpdate := False;
+  fParent := Nil;
+end;
+
 procedure TAudioFile.AddCopyToList(aList: TAudioFileList);
 var newFile: TAudioFile;
 begin
@@ -903,6 +948,32 @@ begin
     AlbumGain          := aAudioFile.AlbumGain           ;
     TrackPeak          := aAudioFile.TrackPeak           ;
     AlbumPeak          := aAudioFile.AlbumPeak           ;
+end;
+
+procedure TAudioFile.AssignCDTrackData(TrackData: TCDTrackData);
+begin
+  if TrackData.Track = -1 then begin
+    Track := -1;
+    Artist := '';
+    AlbumArtist := '';
+    Titel := 'Invalid Track';
+    Album := '';
+    Duration := 0;
+    Genre := '';
+    Year := '';
+    Comment := String(TrackData.CddbID);
+    CoverID := CoverFilenameFromCDDA(Pfad);
+  end else begin
+    Titel := TrackData.Title;
+    Artist := TrackData.Artist;
+    Album := TrackData.Album;
+    Duration := TrackData.Duration;
+    Track := TrackData.Track;
+    Year := TrackData.Year;
+    Genre := TrackData.Genre;
+    Comment := String(TrackData.CddbID);
+    CoverID := CoverFilenameFromCDDA(Pfad);
+  end;
 end;
 
 {
@@ -1118,8 +1189,9 @@ begin
         32000: fSamplerateIDX := 6;
         44100: fSamplerateIDX := 7;
         48000: fSamplerateIDX := 8;
+        96000: fSamplerateIDX := 9;
     else
-        fSamplerateIDX := 9;
+        fSamplerateIDX := 10;
     end;
 end;
 {
@@ -1551,46 +1623,34 @@ end;
 
 function TAudioFile.GetCDDAInfo(Filename: UnicodeString;
   Flags: Integer): TCDDAError;
-var cdFile: TCDDAFile;
-
+var
+  checkCDDB, preferCDDB: Boolean;
+  DriveNo: Integer;
+  CDDrive: TCDDADrive;
+  TrackData: TCDTrackData;
 begin
+  result := cddaErr_None;
 
-//result := cddaErr_None;
-//exit;
+  checkCDDB := ((Flags and GAD_CDDB) = GAD_CDDB) and NempOptions.UseCDDB;
+  preferCDDB := checkCDDB and NempOptions.PreferCDDB;
 
-    SetCDDADefaultInformation(self);
-    cdFile := TCDDAFile.Create;
-    try
-        result := cdFile.GetData(Filename, (Flags and GAD_CDDB) = GAD_CDDB);
-
-        if result = cddaErr_None then
-        begin
-            fTrack := cdFile.Track;
-            Artist := cdFile.Artist;
-            AlbumArtist := '';
-            Titel := cdFile.Title;
-            Album := cdFile.Album;
-            fDuration := cdFile.Duration;
-            Genre := cdFile.Genre;
-            Year := cdFile.Year;
-            Comment := cdFile.CddbID;
-        end else
-        begin
-            fTrack := 0;
-            Artist := '';
-            AlbumArtist := '';
-            Titel := 'Invalid Track';
-            Album := '';
-            fDuration := 0;
-            Genre := '';
-            Year := '';
-            Comment := '';
-            // Pfad := 'cdda:\\';     // do not do this!!!
-        end;
-
-    finally
-        cdFile.Free;
+  SetCDDADefaultInformation(self);
+  DriveNo := TCDDADrive.GetDriveNumber(Filename);
+  if (DriveNo < 0) or (DriveNo >= CDDriveList.Count) then begin
+    result := cddaErr_invalidPath;
+    TrackData.Track := -1;
+  end
+  else begin
+    CDDrive := CDDriveList[DriveNo];
+    if CDDrive.OutOfDate then begin
+      CDDrive.ClearDiscInformation;
+      CDDrive.GetDiscInformation(checkCDDB, preferCDDB);
     end;
+    CDDrive.GetTrackData(Filename, TrackData);
+  end;
+
+  AssignCDTrackData(TrackData);
+  CoverID := CoverFilenameFromCDDA(Filename);
 end;
 
 
@@ -2147,8 +2207,9 @@ begin
                         // for non-standard genres, we need the ID3v2Tag
                         if MainFile.FileType = at_Mp3 then
                         begin
-                              if NOT (ID3Genres.IndexOf(aValue) in [0..125]) then
-                                  EnsureID3v2Exists(TMp3File(MainFile));
+                              //if NOT (ID3Genres.IndexOf(aValue) in [0..125]) then
+                              if ID3Genres.IndexOf(aValue) < 0 then
+                                EnsureID3v2Exists(TMp3File(MainFile));
                         end;
                         MainFile.Genre := aValue;
                     end;
@@ -2580,15 +2641,15 @@ begin
         fFlags := fFlags AND (NOT FLAG_SEARCHRESULT);
 end;
 
-procedure TAudioFile.SetFlag(aFlag: Integer);
+procedure TAudioFile.SetFlag(aFlag: Cardinal);
 begin
   fFlags := fFlags OR aFlag
 end;
-procedure TAudioFile.UnSetFlag(aFlag: Integer);
+procedure TAudioFile.UnSetFlag(aFlag: Cardinal);
 begin
   fFlags := fFlags AND (NOT aFlag);
 end;
-function TAudioFile.FlaggedWith(aFlag: Integer): Boolean;
+function TAudioFile.FlaggedWith(aFlag: Cardinal): Boolean;
 begin
   result := (fFlags AND aFlag) = aFlag;
 end;
@@ -2708,12 +2769,16 @@ begin
       case GetCueID(tmplist[i]) of
         CUE_ID_TRACK: begin
                         aCue := TAudioFile.Create;
+                        aCue.Assign(self);
                         aCue.AudioType := at_CUE;
-                        aCue.Pfad := Pfad;
+                        //aCue.Pfad := Pfad;
                         // set other general information, equal to the complete audiofile
-                        aCue.Album := Album;
-                        aCue.Genre := Genre;
-                        aCue.Year := Year;
+                        //aCue.Album := Album;
+                        //aCue.Genre := Genre;
+                        //aCue.Year := Year;
+                        //aCue.Bitrate := Bitrate;
+                        //aCue.SampleRateIdx := SampleRateIdx;
+                        //aCue.ChannelModeIdx := ChannelModeIdx;
                         aCue.fParent := self;
                         CueList.Add(aCue);
                       end;
@@ -2901,7 +2966,8 @@ begin
                         end;
             MP3DB_GENRE: begin
                              GenreIDX := ReadByteFromStream(aStream);
-                             if GenreIDX <= 125 then
+                             //if GenreIDX <= 125 then
+                             if GenreIDX <= ID3Genres.Count - 1 then
                                  genre := ID3Genres[GenreIDX]
                              else
                                  genre := '';
@@ -3003,7 +3069,8 @@ begin
             end;
             MP3DB_GENRE: begin
                 aStream.Read(GenreIDX,SizeOf(GenreIDX));
-                if GenreIDX <= 125 then
+                //if GenreIDX <= 125 then
+                if GenreIDX <= ID3Genres.Count - 1 then
                   genre := ID3Genres[GenreIDX]
                 else
                   genre := '';
@@ -3095,7 +3162,8 @@ begin
             end;
             MP3DB_GENRE: begin
                 aStream.Read(GenreIDX,SizeOf(GenreIDX));
-                if GenreIDX <= 125 then
+                //if GenreIDX <= 125 then
+                if GenreIDX <= ID3Genres.Count - 1 then
                   genre := ID3Genres[GenreIDX]
                 else
                   genre := '';
